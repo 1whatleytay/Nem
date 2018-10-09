@@ -24,8 +24,9 @@ namespace Nem {
         prgRomSize = (unsigned)romData[4] * kilobyte(16);
         chrRomSize = (unsigned)romData[5] * kilobyte(8);
 
-        // Zero bytes for iNES and NES 2.0
         flag6 = romData[6];
+
+        // For iNES and NES 2.0
         flag7 = romData[7];
         prgRomSize8K = romData[8];
         flag9 = romData[9];

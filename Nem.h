@@ -8,6 +8,7 @@
 #include "ROM/ROM.h"
 #include "CPU/CPU.h"
 #include "PPU/PPU.h"
+#include "Clock/Clock.h"
 #include "Emulator.h"
 
 #endif //NEM_H

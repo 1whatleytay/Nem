@@ -13,15 +13,21 @@ namespace Nem {
         std::cout << "Instruction not implemented. PC: $" << makeHex(cpu->registers->programCounter)
                   << " INST: $" << makeHex(cpu->memory->getByte(cpu->registers->programCounter)) << std::endl;
 
+        cpu->stopExec();
+
         return 0;
     }
 
-    int NOPInstruction(CPU *) { return 0; }
-    int NOPInstruction_i(CPU *) { return 1; }
-    int NOPInstruction_d(CPU *) { return 1; }
-    int NOPInstruction_d_x(CPU *) { return 1; }
-    int NOPInstruction_a(CPU *) { return 2; }
-    int NOPInstruction_a_x(CPU *) { return 2; }
+    int NOPInstruction(CPU *cpu) { return 0; }
+    int NOPInstruction_i(CPU *cpu) { return 1; }
+    int NOPInstruction_d(CPU *cpu) { cpu->cycles += 1; return 1; }
+    int NOPInstruction_d_x(CPU *cpu) { cpu->cycles += 2; return 1; }
+    int NOPInstruction_a(CPU *cpu) { cpu->cycles += 2; return 2; }
+    int NOPInstruction_a_x(CPU *cpu) {
+        cpu->cycles += 2;
+        if (skippedPage(cpu->nextAddress(), cpu->registers->indexX)) cpu->cycles += 1;
+        return 2;
+    }
 
     int ADCInstruction_i(CPU *cpu) {
         Byte value = cpu->nextByte();
@@ -207,6 +213,7 @@ namespace Nem {
         Address pointer = (Address) cpu->nextByte();
         INC(cpu, pointer);
         SBC(cpu, cpu->memory->getByte(pointer));
+        cpu->cycles += 3;
         return 1;
     }
 
@@ -214,6 +221,7 @@ namespace Nem {
         Address pointer = onPage((Address) cpu->nextByte() + cpu->registers->indexX);
         INC(cpu, pointer);
         SBC(cpu, cpu->memory->getByte(pointer));
+        cpu->cycles += 4;
         return 1;
     }
 
@@ -221,6 +229,7 @@ namespace Nem {
         Address pointer = (Address) cpu->nextAddress();
         INC(cpu, pointer);
         SBC(cpu, cpu->memory->getByte(pointer));
+        cpu->cycles += 4;
         return 2;
     }
 
@@ -228,6 +237,7 @@ namespace Nem {
         Address pointer = (Address) cpu->nextAddress() + cpu->registers->indexX;
         INC(cpu, pointer);
         SBC(cpu, cpu->memory->getByte(pointer));
+        cpu->cycles += 5;
         return 2;
     }
 
@@ -235,6 +245,7 @@ namespace Nem {
         Address pointer = (Address) cpu->nextAddress() + cpu->registers->indexY;
         INC(cpu, pointer);
         SBC(cpu, cpu->memory->getByte(pointer));
+        cpu->cycles += 5;
         return 2;
     }
 
@@ -242,6 +253,7 @@ namespace Nem {
         Address pointer = getAddressOnPage(cpu, (Address) cpu->nextAddress() + cpu->registers->indexX);
         INC(cpu, pointer);
         SBC(cpu, cpu->memory->getByte(pointer));
+        cpu->cycles += 6;
         return 1;
     }
 
@@ -249,6 +261,7 @@ namespace Nem {
         Address pointer = getAddressOnPage(cpu, (Address) cpu->nextAddress()) + cpu->registers->indexY;
         INC(cpu, pointer);
         SBC(cpu, cpu->memory->getByte(pointer));
+        cpu->cycles += 6;
         return 1;
     }
 
@@ -256,6 +269,7 @@ namespace Nem {
         Address pointer = (Address) cpu->nextByte();
         DEC(cpu, pointer);
         CMP(cpu, cpu->registers->accumulator, cpu->memory->getByte(pointer));
+        cpu->cycles += 3;
         return 1;
     }
 
@@ -263,6 +277,7 @@ namespace Nem {
         Address pointer = onPage((Address) cpu->nextByte() + cpu->registers->indexX);
         DEC(cpu, pointer);
         CMP(cpu, cpu->registers->accumulator, cpu->memory->getByte(pointer));
+        cpu->cycles += 4;
         return 1;
     }
 
@@ -270,6 +285,7 @@ namespace Nem {
         Address pointer = cpu->nextAddress();
         DEC(cpu, pointer);
         CMP(cpu, cpu->registers->accumulator, cpu->memory->getByte(pointer));
+        cpu->cycles += 4;
         return 2;
     }
 
@@ -277,6 +293,7 @@ namespace Nem {
         Address pointer = cpu->nextAddress() + cpu->registers->indexX;
         DEC(cpu, pointer);
         CMP(cpu, cpu->registers->accumulator, cpu->memory->getByte(pointer));
+        cpu->cycles += 5;
         return 2;
     }
 
@@ -284,6 +301,7 @@ namespace Nem {
         Address pointer = cpu->nextAddress() + cpu->registers->indexY;
         DEC(cpu, pointer);
         CMP(cpu, cpu->registers->accumulator, cpu->memory->getByte(pointer));
+        cpu->cycles += 5;
         return 2;
     }
 
@@ -291,6 +309,7 @@ namespace Nem {
         Address pointer = getAddressOnPage(cpu, (Address) cpu->nextByte() + cpu->registers->indexX);
         DEC(cpu, pointer);
         CMP(cpu, cpu->registers->accumulator, cpu->memory->getByte(pointer));
+        cpu->cycles += 6;
         return 1;
     }
 
@@ -298,6 +317,7 @@ namespace Nem {
         Address pointer = getAddressOnPage(cpu, (Address) cpu->nextByte()) + cpu->registers->indexY;
         DEC(cpu, pointer);
         CMP(cpu, cpu->registers->accumulator, cpu->memory->getByte(pointer));
+        cpu->cycles += 6;
         return 1;
     }
 
@@ -675,24 +695,28 @@ namespace Nem {
     int RORInstruction_d(CPU *cpu) {
         Address pointer = (Address) cpu->nextByte();
         ROR(cpu, pointer);
+        cpu->cycles += 3;
         return 1;
     }
 
     int RORInstruction_d_x(CPU *cpu) {
         Address pointer = (Address) cpu->nextByte() + cpu->registers->indexX;
         ROR(cpu, pointer);
+        cpu->cycles += 4;
         return 1;
     }
 
     int RORInstruction_a(CPU *cpu) {
         Address pointer = cpu->nextAddress();
         ROR(cpu, pointer);
+        cpu->cycles += 4;
         return 2;
     }
 
     int RORInstruction_a_x(CPU *cpu) {
         Address pointer = cpu->nextAddress() + cpu->registers->indexX;
         ROR(cpu, pointer);
+        cpu->cycles += 5;
         return 2;
     }
 
@@ -700,6 +724,7 @@ namespace Nem {
         Address pointer = (Address) cpu->nextByte();
         ASL(cpu, pointer);
         ORA(cpu, cpu->memory->getByte(pointer));
+        cpu->cycles += 3;
         return 1;
     }
 
@@ -707,6 +732,7 @@ namespace Nem {
         Address pointer = onPage((Address) cpu->nextByte() + cpu->registers->indexX);
         ASL(cpu, pointer);
         ORA(cpu, cpu->memory->getByte(pointer));
+        cpu->cycles += 4;
         return 1;
     }
 
@@ -714,6 +740,7 @@ namespace Nem {
         Address pointer = cpu->nextAddress();
         ASL(cpu, pointer);
         ORA(cpu, cpu->memory->getByte(pointer));
+        cpu->cycles += 4;
         return 2;
     }
 
@@ -721,6 +748,7 @@ namespace Nem {
         Address pointer = cpu->nextAddress() + cpu->registers->indexX;
         ASL(cpu, pointer);
         ORA(cpu, cpu->memory->getByte(pointer));
+        cpu->cycles += 5;
         return 2;
     }
 
@@ -728,6 +756,7 @@ namespace Nem {
         Address pointer = cpu->nextAddress() + cpu->registers->indexY;
         ASL(cpu, pointer);
         ORA(cpu, cpu->memory->getByte(pointer));
+        cpu->cycles += 5;
         return 2;
     }
 
@@ -735,6 +764,7 @@ namespace Nem {
         Address pointer = getAddressOnPage(cpu, (Address) cpu->nextByte() + cpu->registers->indexX);
         ASL(cpu, pointer);
         ORA(cpu, cpu->memory->getByte(pointer));
+        cpu->cycles += 6;
         return 1;
     }
 
@@ -742,6 +772,7 @@ namespace Nem {
         Address pointer = getAddressOnPage(cpu, (Address) cpu->nextByte()) + cpu->registers->indexY;
         ASL(cpu, pointer);
         ORA(cpu, cpu->memory->getByte(pointer));
+        cpu->cycles += 6;
         return 1;
     }
 
@@ -749,6 +780,7 @@ namespace Nem {
         Address pointer = (Address) cpu->nextByte();
         ROL(cpu, pointer);
         AND(cpu, cpu->memory->getByte(pointer));
+        cpu->cycles += 3;
         return 1;
     }
 
@@ -756,6 +788,7 @@ namespace Nem {
         Address pointer = onPage((Address) cpu->nextByte() + cpu->registers->indexX);
         ROL(cpu, pointer);
         AND(cpu, cpu->memory->getByte(pointer));
+        cpu->cycles += 4;
         return 1;
     }
 
@@ -763,6 +796,7 @@ namespace Nem {
         Address pointer = cpu->nextAddress();
         ROL(cpu, pointer);
         AND(cpu, cpu->memory->getByte(pointer));
+        cpu->cycles += 4;
         return 2;
     }
 
@@ -770,6 +804,7 @@ namespace Nem {
         Address pointer = cpu->nextAddress() + cpu->registers->indexX;
         ROL(cpu, pointer);
         AND(cpu, cpu->memory->getByte(pointer));
+        cpu->cycles += 5;
         return 2;
     }
 
@@ -777,6 +812,7 @@ namespace Nem {
         Address pointer = cpu->nextAddress() + cpu->registers->indexY;
         ROL(cpu, pointer);
         AND(cpu, cpu->memory->getByte(pointer));
+        cpu->cycles += 5;
         return 2;
     }
 
@@ -784,6 +820,7 @@ namespace Nem {
         Address pointer = getAddressOnPage(cpu, (Address) cpu->nextByte() + cpu->registers->indexX);
         ROL(cpu, pointer);
         AND(cpu, cpu->memory->getByte(pointer));
+        cpu->cycles += 6;
         return 1;
     }
 
@@ -791,6 +828,7 @@ namespace Nem {
         Address pointer = getAddressOnPage(cpu, (Address) cpu->nextByte()) + cpu->registers->indexY;
         ROL(cpu, pointer);
         AND(cpu, cpu->memory->getByte(pointer));
+        cpu->cycles += 6;
         return 1;
     }
 
@@ -798,6 +836,7 @@ namespace Nem {
         Address pointer = (Address) cpu->nextByte();
         ROR(cpu, pointer);
         ADC(cpu, cpu->memory->getByte(pointer));
+        cpu->cycles += 3;
         return 1;
     }
 
@@ -805,6 +844,7 @@ namespace Nem {
         Address pointer = onPage((Address) cpu->nextByte() + cpu->registers->indexX);
         ROR(cpu, pointer);
         ADC(cpu, cpu->memory->getByte(pointer));
+        cpu->cycles += 4;
         return 1;
     }
 
@@ -812,6 +852,7 @@ namespace Nem {
         Address pointer = cpu->nextAddress();
         ROR(cpu, pointer);
         ADC(cpu, cpu->memory->getByte(pointer));
+        cpu->cycles += 4;
         return 2;
     }
 
@@ -819,6 +860,7 @@ namespace Nem {
         Address pointer = cpu->nextAddress() + cpu->registers->indexX;
         ROR(cpu, pointer);
         ADC(cpu, cpu->memory->getByte(pointer));
+        cpu->cycles += 5;
         return 2;
     }
 
@@ -826,6 +868,7 @@ namespace Nem {
         Address pointer = cpu->nextAddress() + cpu->registers->indexY;
         ROR(cpu, pointer);
         ADC(cpu, cpu->memory->getByte(pointer));
+        cpu->cycles += 5;
         return 2;
     }
 
@@ -833,6 +876,7 @@ namespace Nem {
         Address pointer = getAddressOnPage(cpu, (Address) cpu->nextByte() + cpu->registers->indexX);
         ROR(cpu, pointer);
         ADC(cpu, cpu->memory->getByte(pointer));
+        cpu->cycles += 6;
         return 1;
     }
 
@@ -840,6 +884,7 @@ namespace Nem {
         Address pointer = getAddressOnPage(cpu, (Address) cpu->nextByte()) + cpu->registers->indexY;
         ROR(cpu, pointer);
         ADC(cpu, cpu->memory->getByte(pointer));
+        cpu->cycles += 6;
         return 1;
     }
 
@@ -847,6 +892,7 @@ namespace Nem {
         Address pointer = (Address) cpu->nextByte();
         LSR(cpu, pointer);
         EOR(cpu, cpu->memory->getByte(pointer));
+        cpu->cycles += 3;
         return 1;
     }
 
@@ -854,6 +900,7 @@ namespace Nem {
         Address pointer = onPage((Address) cpu->nextByte() + cpu->registers->indexX);
         LSR(cpu, pointer);
         EOR(cpu, cpu->memory->getByte(pointer));
+        cpu->cycles += 4;
         return 1;
     }
 
@@ -861,6 +908,7 @@ namespace Nem {
         Address pointer = cpu->nextAddress();
         LSR(cpu, pointer);
         EOR(cpu, cpu->memory->getByte(pointer));
+        cpu->cycles += 4;
         return 2;
     }
 
@@ -868,6 +916,7 @@ namespace Nem {
         Address pointer = cpu->nextAddress() + cpu->registers->indexX;
         LSR(cpu, pointer);
         EOR(cpu, cpu->memory->getByte(pointer));
+        cpu->cycles += 5;
         return 2;
     }
 
@@ -875,6 +924,7 @@ namespace Nem {
         Address pointer = cpu->nextAddress() + cpu->registers->indexY;
         LSR(cpu, pointer);
         EOR(cpu, cpu->memory->getByte(pointer));
+        cpu->cycles += 5;
         return 2;
     }
 
@@ -882,6 +932,7 @@ namespace Nem {
         Address pointer = getAddressOnPage(cpu, (Address) cpu->nextByte() + cpu->registers->indexX);
         LSR(cpu, pointer);
         EOR(cpu, cpu->memory->getByte(pointer));
+        cpu->cycles += 6;
         return 1;
     }
 
@@ -889,6 +940,7 @@ namespace Nem {
         Address pointer = getAddressOnPage(cpu, (Address) cpu->nextByte()) + cpu->registers->indexY;
         LSR(cpu, pointer);
         EOR(cpu, cpu->memory->getByte(pointer));
+        cpu->cycles += 6;
         return 1;
     }
 
@@ -943,7 +995,7 @@ namespace Nem {
     int BPLInstruction_pd(CPU *cpu) {
         if (!cpu->isFlagSet(CPURegisters::StatusFlags::Negative)) {
             short value = makeSigned(cpu->nextByte());
-            if (skippedPage(cpu->registers->programCounter, value)) cpu->cycles += 1;
+            if (skippedPage(cpu->registers->programCounter + (Address)2, value)) cpu->cycles += 1;
             cpu->registers->programCounter += value;
             cpu->cycles += 1;
         }
@@ -953,7 +1005,7 @@ namespace Nem {
     int BMIInstruction_pd(CPU *cpu) {
         if (cpu->isFlagSet(CPURegisters::StatusFlags::Negative)) {
             short value = makeSigned(cpu->nextByte());
-            if (skippedPage(cpu->registers->programCounter, value)) cpu->cycles += 1;
+            if (skippedPage(cpu->registers->programCounter + (Address)2, value)) cpu->cycles += 1;
             cpu->registers->programCounter += value;
             cpu->cycles += 1;
         }
@@ -963,7 +1015,7 @@ namespace Nem {
     int BVCInstruction_pd(CPU *cpu) {
         if (!cpu->isFlagSet(CPURegisters::StatusFlags::Overflow)) {
             short value = makeSigned(cpu->nextByte());
-            if (skippedPage(cpu->registers->programCounter, value)) cpu->cycles += 1;
+            if (skippedPage(cpu->registers->programCounter + (Address)2, value)) cpu->cycles += 1;
             cpu->registers->programCounter += value;
             cpu->cycles += 1;
         }
@@ -973,7 +1025,7 @@ namespace Nem {
     int BVSInstruction_pd(CPU *cpu) {
         if (cpu->isFlagSet(CPURegisters::StatusFlags::Overflow)) {
             short value = makeSigned(cpu->nextByte());
-            if (skippedPage(cpu->registers->programCounter, value)) cpu->cycles += 1;
+            if (skippedPage(cpu->registers->programCounter + (Address)2, value)) cpu->cycles += 1;
             cpu->registers->programCounter += value;
             cpu->cycles += 1;
         }
@@ -983,7 +1035,7 @@ namespace Nem {
     int BCCInstruction_pd(CPU *cpu) {
         if (!cpu->isFlagSet(CPURegisters::StatusFlags::Carry)) {
             short value = makeSigned(cpu->nextByte());
-            if (skippedPage(cpu->registers->programCounter, value)) cpu->cycles += 1;
+            if (skippedPage(cpu->registers->programCounter + (Address)2, value)) cpu->cycles += 1;
             cpu->registers->programCounter += value;
             cpu->cycles += 1;
         }
@@ -993,7 +1045,7 @@ namespace Nem {
     int BCSInstruction_pd(CPU *cpu) {
         if (cpu->isFlagSet(CPURegisters::StatusFlags::Carry)) {
             short value = makeSigned(cpu->nextByte());
-            if (skippedPage(cpu->registers->programCounter, value)) cpu->cycles += 1;
+            if (skippedPage(cpu->registers->programCounter + (Address)2, value)) cpu->cycles += 1;
             cpu->registers->programCounter += value;
             cpu->cycles += 1;
         }
@@ -1003,7 +1055,7 @@ namespace Nem {
     int BNEInstruction_pd(CPU *cpu) {
         if (!cpu->isFlagSet(CPURegisters::StatusFlags::Zero)) {
             short value = makeSigned(cpu->nextByte());
-            if (skippedPage(cpu->registers->programCounter, value)) cpu->cycles += 1;
+            if (skippedPage(cpu->registers->programCounter + (Address)2, value)) cpu->cycles += 1;
             cpu->registers->programCounter += value;
             cpu->cycles += 1;
         }
@@ -1013,7 +1065,7 @@ namespace Nem {
     int BEQInstruction_pd(CPU *cpu) {
         if (cpu->isFlagSet(CPURegisters::StatusFlags::Zero)) {
             short value = makeSigned(cpu->nextByte());
-            if (skippedPage(cpu->registers->programCounter, value)) cpu->cycles += 1;
+            if (skippedPage(cpu->registers->programCounter + (Address)2, value)) cpu->cycles += 1;
             cpu->registers->programCounter += value;
             cpu->cycles += 1;
         }
@@ -1023,24 +1075,33 @@ namespace Nem {
     int BRKInstruction(CPU *cpu) {
         std::cout << "Break executed. PC: 0x" << makeHex(cpu->registers->programCounter) << std::endl;
 
+        cpu->stopExec();
+
         return 0;
     }
 
     int RTIInstruction(CPU *cpu) {
         cpu->registers->status = (Byte) (cpu->popByte() | 0b00100000);
-        cpu->popAddress();
+#ifdef RTI_PC_SET
+        Address pointer = cpu->popAddress();
+        cpu->registers->programCounter = pointer;
+#endif
+        cpu->cycles += 4;
         return 0;
     }
 
     int JSRInstruction_a(CPU *cpu) {
         cpu->pushAddress(cpu->registers->programCounter + (Address) 2);
-        cpu->registers->programCounter = cpu->nextAddress() - (Address) 1;
+        cpu->registers->programCounter = cpu->nextAddress();
+        cpu->registers->programCounter--;
+        cpu->cycles += 4;
         return 0;
     }
 
     int RTSInstruction(CPU *cpu) {
         Address address = cpu->popAddress();
         cpu->registers->programCounter = address;
+        cpu->cycles += 4;
         return 0;
     }
 
@@ -1130,7 +1191,7 @@ namespace Nem {
 
     int LDAInstruction_a_y(CPU *cpu) {
         Address pointer = cpu->nextAddress();
-        if (skippedPage(pointer, cpu->registers->indexX)) cpu->cycles += 1;
+        if (skippedPage(pointer, cpu->registers->indexY)) cpu->cycles += 1;
         cpu->registers->accumulator = cpu->memory->getByte(pointer + cpu->registers->indexY);
         checkLow(cpu);
         cpu->cycles += 2;
@@ -1240,6 +1301,7 @@ namespace Nem {
         cpu->registers->accumulator = value;
         cpu->registers->indexX = value;
         checkLow(cpu);
+        cpu->cycles += 1;
         return 1;
     }
 
@@ -1248,6 +1310,7 @@ namespace Nem {
         cpu->registers->accumulator = value;
         cpu->registers->indexX = value;
         checkLow(cpu);
+        cpu->cycles += 2;
         return 1;
     }
 
@@ -1256,6 +1319,7 @@ namespace Nem {
         cpu->registers->accumulator = value;
         cpu->registers->indexX = value;
         checkLow(cpu);
+        cpu->cycles += 2;
         return 2;
     }
 
@@ -1264,6 +1328,7 @@ namespace Nem {
         cpu->registers->accumulator = value;
         cpu->registers->indexX = value;
         checkLow(cpu);
+        cpu->cycles += 2;
         return 2;
     }
 
@@ -1272,14 +1337,18 @@ namespace Nem {
         cpu->registers->accumulator = value;
         cpu->registers->indexX = value;
         checkLow(cpu);
+        cpu->cycles += 4;
         return 1;
     }
 
     int LAXInstruction_$y(CPU *cpu) {
-        Byte value = cpu->memory->getByte(getAddressOnPage(cpu, (Address) cpu->nextByte()) + cpu->registers->indexY);
+        Address pointer = getAddressOnPage(cpu, (Address) cpu->nextByte());
+        if (skippedPage(pointer, cpu->registers->indexY)) cpu->cycles += 1;
+        Byte value = cpu->memory->getByte(pointer + cpu->registers->indexY);
         cpu->registers->accumulator = value;
         cpu->registers->indexX = value;
         checkLow(cpu);
+        cpu->cycles += 3;
         return 1;
     }
 
@@ -1317,7 +1386,7 @@ namespace Nem {
         cpu->memory->setByte(getAddressOnPage(cpu,
                                               (Address) cpu->nextByte() + cpu->registers->indexX),
                              cpu->registers->accumulator);
-        cpu->cycles += 6;
+        cpu->cycles += 4;
         return 1;
     }
 
@@ -1325,7 +1394,7 @@ namespace Nem {
         cpu->memory->setByte(getAddressOnPage(cpu,
                                               (Address) cpu->nextByte()) + cpu->registers->indexY,
                              cpu->registers->accumulator);
-        cpu->cycles += 6;
+        cpu->cycles += 4;
         return 1;
     }
 
@@ -1368,25 +1437,28 @@ namespace Nem {
     int SAXInstruction_d(CPU *cpu) {
         cpu->memory->setByte((Address) cpu->nextByte(),
                              cpu->registers->accumulator & cpu->registers->indexX);
+        cpu->cycles += 1;
         return 1;
     }
 
     int SAXInstruction_d_y(CPU *cpu) {
         cpu->memory->setByte(onPage((Address) cpu->nextByte() + cpu->registers->indexY),
                              cpu->registers->accumulator & cpu->registers->indexX);
+        cpu->cycles += 2;
         return 1;
     }
 
     int SAXInstruction_a(CPU *cpu) {
-
         cpu->memory->setByte((Address) cpu->nextAddress(),
                              cpu->registers->accumulator & cpu->registers->indexX);
+        cpu->cycles += 2;
         return 2;
     }
 
     int SAXInstruction_$x(CPU *cpu) {
         cpu->memory->setByte(cpu->memory->getAddress(onPage((Address) cpu->nextByte() + cpu->registers->indexX)),
                              cpu->registers->accumulator & cpu->registers->indexX);
+        cpu->cycles += 4;
         return 1;
     }
 
@@ -1403,22 +1475,26 @@ namespace Nem {
 
     int PHAInstruction(CPU *cpu) {
         cpu->pushByte(cpu->registers->accumulator);
+        cpu->cycles += 1;
         return 0;
     }
 
     int PLAInstruction(CPU *cpu) {
         cpu->registers->accumulator = cpu->popByte();
         checkLow(cpu);
+        cpu->cycles += 2;
         return 0;
     }
 
     int PHPInstruction(CPU *cpu) {
         cpu->pushByte((Byte) (cpu->registers->status | 0b00110000));
+        cpu->cycles += 1;
         return 0;
     }
 
     int PLPInstruction(CPU *cpu) {
         cpu->registers->status = (Byte) ((cpu->popByte() & ~0b00010000) | 0b00100000);
+        cpu->cycles += 2;
         return 0;
     }
 

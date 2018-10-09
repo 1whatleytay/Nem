@@ -35,6 +35,7 @@ namespace Nem {
     class ROM;
     class CPU;
     class PPU;
+    class Clock;
 
     class Emulator {
     public:
@@ -42,7 +43,9 @@ namespace Nem {
         CPU* cpu = nullptr;
         PPU* ppu = nullptr;
 
-        explicit Emulator(string& pathToRom);
+        Clock* masterClock = nullptr;
+
+        explicit Emulator(string pathToRom);
         ~Emulator();
     };
 }

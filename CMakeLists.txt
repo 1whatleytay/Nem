@@ -2,10 +2,11 @@ cmake_minimum_required(VERSION 3.12)
 project(Nem)
 
 set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_AUTOMOC ON)
 
-find_package(Qt5Widgets CONFIG REQUIRED)
-find_package(Qt5OpenGL CONFIG REQUIRED)
+set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+add_subdirectory(glfw)
 
 find_package(OpenGL REQUIRED)
 
@@ -14,8 +15,7 @@ if (APPLE)
 endif()
 
 set(Sources
-        Qt/main.cpp
-        Qt/QNem.cpp
+        Nem.h
 
         Emulator.h
         Emulator.cpp
@@ -35,16 +35,19 @@ set(Sources
         PPU/PPU.h
         PPU/PPU.cpp
         PPU/PPUMemory.cpp
-        Qt/QNemWindow.cpp Qt/QNemWindow.h Nem.h Timer.cpp Timer.h)
 
-set(Shaders
-        Shaders/map.vert
-        Shaders/sprite.vert
-        Shaders/paletted.frag)
+        Clock/Clock.h
+        Clock/Clock.cpp
+
+        Display/Display.h
+        Display/Display.cpp
+        Display/Shaders.cpp
+
+        main.cpp)
 
 configure_file(Shaders/map.vert ${CMAKE_CURRENT_BINARY_DIR}/map.vert COPYONLY)
 configure_file(Shaders/sprite.vert ${CMAKE_CURRENT_BINARY_DIR}/sprite.vert COPYONLY)
 configure_file(Shaders/paletted.frag ${CMAKE_CURRENT_BINARY_DIR}/paletted.frag COPYONLY)
 
 add_executable(Nem ${Sources})
-target_link_libraries(Nem ${OPENGL_LIBRARIES} Qt5::Widgets Qt5::OpenGL)
+target_link_libraries(Nem ${OPENGL_LIBRARIES} glfw)

@@ -15,13 +15,16 @@ using std::vector;
 typedef uint8_t Byte;
 typedef uint16_t Address;
 
-#define TIMER_TYPE Qt::CoarseTimer
+#define kilobyte(a) a * 1024
+
+#define MARIO_8057
 #define FORCE_ENTRY 0xc000
-#define GRAPHICS_ONLY
+#define MIRROR_ROM
 #define RESET_NMI
+//#define PRINT_INSTRUCTIONS
+#define RTI_PC_SET
 
 namespace Nem {
-    inline unsigned kilobyte(unsigned num) { return num * 1024; }
     inline Byte lo(Address value) { return (Byte)(value & 0xff); }
     inline Byte hi(Address value) { return (Byte)((value >> 8) & 0xff); }
     inline Address makeAddress(Byte a, Byte b) { return (Address)(b * 0x100 + a); }

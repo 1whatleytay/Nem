@@ -2,36 +2,40 @@
 // Created by Taylor Whatley on 2018-09-19.
 //
 
-#include "CPU.h"
-#include "../ROM/ROM.h"
-#include "../PPU/PPU.h"
+#include "../Nem.h"
 #include "../Errors.h"
 
 #include <iostream>
 
 namespace Nem {
 
-    string regionName(CPUMemory::Region region) {
+    string regionName(CPUMemoryRegion region) {
         switch (region) {
-            case CPUMemory::Region::WorkRam: return "Work Ram";
-            case CPUMemory::Region::PPURegisters: return "PPU Control Registers";
-            case CPUMemory::Region::IORegisters: return "APU/IO Registers";
-            case CPUMemory::Region::SRAM: return "SRAM";
-            case CPUMemory::Region::PRGRom: return "Program ROM";
+            case CPUMemoryRegion::WorkRam: return "Work Ram";
+            case CPUMemoryRegion::PPUIO: return "PPU Control Registers";
+            case CPUMemoryRegion::APUIO: return "APU/IO Registers";
+            case CPUMemoryRegion::SRAM: return "SRAM";
+            case CPUMemoryRegion::PRGRom: return "Program ROM";
         }
     }
 
     CPUMemory::MappedAddress CPUMemory::mapAddress(Address address) {
         if (address < 0x2000)
-            return { CPUMemory::Region::WorkRam, (Address)(address % 0x0800) };
+            return { CPUMemoryRegion::WorkRam, (Address)(address % 0x0800) };
         else if (address < 0x4000)
-            return { CPUMemory::Region::PPURegisters, (Address)((address - 0x2000) % 0x0008 + 0x2000) };
+            return { CPUMemoryRegion::PPUIO, (Address)((address - 0x2000) % 0x0008 + 0x2000) };
         else if (address < 0x4020)
-            return { CPUMemory::Region::IORegisters, address };
+            return { CPUMemoryRegion::APUIO, address };
         else if (address < 0x6000)
-            return { CPUMemory::Region::SRAM, address };
+            return { CPUMemoryRegion::SRAM, address };
         else
-            return { CPUMemory::Region::PRGRom, (Address)((address - 0x8000) % 0x4000 + 0x8000) };
+            return { CPUMemoryRegion::PRGRom,
+#ifdef MIRROR_ROM
+                     (Address)((address - 0x8000) % 0x4000 + 0x8000)
+#else
+                     address
+#endif
+        };
     }
 
     Byte CPUMemory::getByte(Address address) {
@@ -39,7 +43,7 @@ namespace Nem {
         switch (mappedAddress.region) {
             case WorkRam:
                 return workRam[mappedAddress.effectiveAddress - mappedAddress.region];
-            case PPURegisters:
+            case PPUIO:
                 switch (mappedAddress.effectiveAddress) {
                     case 0x2002:
                         return ppu->registers->status;
@@ -50,7 +54,7 @@ namespace Nem {
                     default: break;
                 }
                 break;
-            case IORegisters:
+            case APUIO:
                 break;
             case SRAM:
                 break;
@@ -73,7 +77,7 @@ namespace Nem {
             case WorkRam:
                 workRam[mappedAddress.effectiveAddress - mappedAddress.region] = value;
                 return;
-            case PPURegisters:
+            case PPUIO:
                 switch (mappedAddress.effectiveAddress) {
                     case 0x2000:
                         ppu->registers->control = value;
@@ -97,12 +101,13 @@ namespace Nem {
                         return;
                     case 0x2007:
                         ppu->memory->setByte(ppu->registers->address, value);
-                        ppu->registers->address++;
+                        ppu->registers->address += 1
+                                + (ppu->isControlSet(PPURegisters::ControlFlags::Increment) ? 31 : 0);
                         return;
                     default: break;
                 }
                 break;
-            case IORegisters:
+            case APUIO:
                 break;
             case SRAM:
                 break;
@@ -128,9 +133,19 @@ namespace Nem {
         std::cout << "]" << std::endl;
     }
 
-    Address CPUMemory::getNMIVector() { return getAddress(0xFFFA); }
-    Address CPUMemory::getResetVector() { return getAddress(0xFFFC); }
-    Address CPUMemory::getIRQVector() { return getAddress(0xFFFE); }
+    // Force disable program rom mirroring
+    Address CPUMemory::getNMIVector() {
+        return makeAddress(rom->prgROM[0xFFFA - CPUMemoryRegion::PRGRom],
+                           rom->prgROM[0xFFFB - CPUMemoryRegion::PRGRom]);
+    }
+    Address CPUMemory::getResetVector() {
+        return makeAddress(rom->prgROM[0xFFFC - CPUMemoryRegion::PRGRom],
+                           rom->prgROM[0xFFFD - CPUMemoryRegion::PRGRom]);
+    }
+    Address CPUMemory::getIRQVector() {
+        return makeAddress(rom->prgROM[0xFFFE - CPUMemoryRegion::PRGRom],
+                           rom->prgROM[0xFFFF - CPUMemoryRegion::PRGRom]);
+    }
 
     void CPUMemory::setPPU(PPU* nPPU) {
         ppu = nPPU;

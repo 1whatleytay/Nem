@@ -7,9 +7,22 @@
 
 #include "../Internal.h"
 
+#ifdef PRINT_INSTRUCTIONS
+#include <fstream>
+#endif
+
 namespace Nem {
     class ROM;
     class PPU;
+    class Clock;
+
+    enum CPUMemoryRegion {
+        WorkRam      = 0x0000,
+        PPUIO = 0x2000,
+        APUIO  = 0x4000,
+        SRAM         = 0x4020,
+        PRGRom       = 0x8000,
+    };
 
     class CPUMemory {
         PPU* ppu = nullptr;
@@ -17,16 +30,8 @@ namespace Nem {
 
         vector<Byte> workRam = vector<Byte>(kilobyte(2));
     public:
-        enum Region {
-            WorkRam      = 0x0000,
-            PPURegisters = 0x2000,
-            IORegisters  = 0x4000,
-            SRAM         = 0x4020,
-            PRGRom       = 0x8000,
-        };
-
         struct MappedAddress {
-            Region region;
+            CPUMemoryRegion region;
             Address effectiveAddress;
         };
 
@@ -70,17 +75,26 @@ namespace Nem {
     };
 
     class CPU {
-        void processIRQ();
-        void processNMI();
+        Clock* masterClock;
 
         volatile bool stopExecution = false;
 
+        void processIRQ();
+        void processNMI();
     public:
-        int cycles = 0;
+        long long cycles = 0;
         bool irq = false, nmi = false;
 
         CPUMemory* memory = nullptr;
         CPURegisters* registers = nullptr;
+
+#ifdef PRINT_INSTRUCTIONS
+        std::ofstream outFile = std::ofstream("/Users/desgroup/Desktop/nem.log.txt");
+#endif
+
+#ifdef MARIO_8057
+        void wait8057();
+#endif
 
         Byte nextByte(Address next = 1);
         Address nextAddress(Address next = 1);
@@ -101,7 +115,7 @@ namespace Nem {
         void exec();
         void stopExec();
 
-        explicit CPU(ROM* nROM);
+        CPU(Clock* nMasterClock, ROM* nROM);
         ~CPU();
     };
 }

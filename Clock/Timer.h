@@ -15,12 +15,6 @@ namespace Nem {
 
         Timer(long long nInterval);
     };
-
-//    class CycleTimer {
-//
-//    public:
-//
-//    };
 }
 
 

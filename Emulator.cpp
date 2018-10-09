@@ -8,19 +8,24 @@
 #include <sstream>
 
 namespace Nem {
-    Emulator::Emulator(string& pathToRom) {
+    Emulator::Emulator(string pathToRom) {
         rom = new ROM(pathToRom);
 
-        cpu = new CPU(rom);
-        ppu = new PPU(rom);
+        masterClock = new Clock();
+
+        cpu = new CPU(masterClock, rom);
+        ppu = new PPU(masterClock, rom);
 
         cpu->setPPU(ppu);
         ppu->setCPU(cpu);
     }
 
     Emulator::~Emulator() {
-        delete rom;
-        delete cpu;
+        cpu->stopExec();
+
         delete ppu;
+        delete cpu;
+        delete masterClock;
+        delete rom;
     }
 }

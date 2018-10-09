@@ -18,11 +18,18 @@ class QNemWindow: public QWindow, protected QOpenGLFunctions {
 
     // OpenGL and Initialization
     QOpenGLContext* context = nullptr;
-    GLuint backgroundProgram, spriteProgram;
-    GLuint buffer;
-    GLuint mainTexture;
+
+    // Programs and Uniforms
+    GLuint backgroundProgram;//, spriteProgram;
+    GLint uniformBkgNameTableDrawIndex, uniformBkgPatternTableDrawIndex;
+    GLint uniformBkgNameTableSampler;
+    GLint uniformBkgPatternSampler;
+
+    // OpenGL objects
+    GLuint nameTableTexture, patternTexture;
     GLuint sampler;
     GLuint vao;
+
     bool initialized = false;
 
     int timer;
@@ -36,7 +43,10 @@ class QNemWindow: public QWindow, protected QOpenGLFunctions {
     void backgroundListener(int index, Nem::PPUPalette palette);
     void spriteListener(int index, Nem::PPUPalette palette);
 
+    void checkOpenGLErrors(string subtitle = "");
+    void loadPPUPalette(GLuint program, Nem::PPUPalette palette, string location);
     bool loadShaders();
+    void loadUniforms();
     void init();
 protected:
     bool event(QEvent* event) override;

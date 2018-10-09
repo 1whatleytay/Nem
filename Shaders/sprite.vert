@@ -1,9 +1,9 @@
 #version 330 core
 
-flat out int palette;
+flat out uint palette;
 out vec2 texCoord;
 
 void main() {
-    palette = 0;
+    palette = uint(0);
     texCoord = vec2(0);
 }

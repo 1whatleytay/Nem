@@ -6,65 +6,59 @@
 #define NEM_PPU_H
 
 #include "../Internal.h"
-
-#include "../Timer.h"
+#include "../ROM/ROM.h"
 
 namespace Nem {
-    class ROM;
     class CPU;
+    class Clock;
 
     struct PPUPalette { Byte colorA, colorB, colorC; };
 
-    class PPUPaletteMemory {
+    struct PPUPaletteMemory {
         Byte clearColor;
         PPUPalette background[4];
         PPUPalette sprite[4];
+    };
 
+    typedef Byte PPUNameTable[1024];
+
+    enum PPUMemoryRegion {
+        PatternTable0 = 0x0000,
+        PatternTable1 = 0x1000,
+        NameTable0    = 0x2000,
+        NameTable1    = 0x2400,
+        NameTable2    = 0x2800,
+        NameTable3    = 0x2C00,
+        PaletteRam    = 0x3F00,
+    };
+
+    class PPUMemoryEdits {
     public:
-        std::function<void(Byte value)> clearColorListener;
-        std::function<void(int index, PPUPalette palette)> backgroundListener;
-        std::function<void(int index, PPUPalette palette)> spriteListener;
+        bool patternTable = false;
+        bool nameTable = false;
+        bool paletteRam = false;
 
-        void setClearColor(Byte value);
-        void setBackgroundPalette(int index, PPUPalette palette);
-        void setSpritePalette(int index, PPUPalette palette);
-
-        Byte getClearColor();
-        PPUPalette getBackgroundPalette(int index);
-        PPUPalette getSpritePalette(int index);
-    };
-
-    struct PPUPatternTable {
-        Byte data[16 * 16 * 16];
-    };
-
-    struct PPUNameTable {
-        Byte data[32 * 30];
-        Byte attributeTable[64];
+        void addEdit(PPUMemoryRegion region);
+        void reset();
     };
 
     class PPUMemory {
-        PPUNameTable realNameTable0, realNameTable1;
+        ROMHeader::Mirroring mirroring;
 
         // 0: top left, 1: top right, 2: bottom left, 3: bottom right
-        PPUNameTable *nameTable0 = nullptr, *nameTable1 = nullptr, *nameTable2 = nullptr, *nameTable3 = nullptr;
+        PPUNameTable nameTables[2];
 
         ROM* rom = nullptr;
     public:
+        PPUMemoryEdits edits;
+
+        int getNameTableIndex(int index);
+        int getNameTableByIndex(int nameTable);
+
         PPUPaletteMemory palettes;
 
-        enum Region {
-            PatternTable0 = 0x0000,
-            PatternTable1 = 0x1000,
-            NameTable0    = 0x2000,
-            NameTable1    = 0x2400,
-            NameTable2    = 0x2800,
-            NameTable3    = 0x2C00,
-            PaletteRam    = 0x3F00,
-        };
-
         struct MappedAddress {
-            Region region;
+            PPUMemoryRegion region;
             Address effectiveAddress;
         };
 
@@ -107,25 +101,33 @@ namespace Nem {
 
         Byte oamAddress = 0x00, oamData = 0x00;
 
-        bool scrollWrite = false;
+        bool scrollWrite = true;
         Address scroll = 0x0000;
 
-        bool addressWrite = false;
+        bool addressWrite = true;
         Address address = 0x0000;
     };
 
     class PPU {
+        Clock* masterClock;
+
         CPU* cpu;
 
     public:
         PPUMemory* memory;
         PPURegisters* registers;
 
-        void vblank();
+        bool oddFrame = false;
+
+        void nextFrame();
+        void waitUntilNextFrame();
+
+        bool isControlSet(PPURegisters::ControlFlags flags);
+        bool isMaskSet(PPURegisters::MaskFlags flags);
 
         void setCPU(Nem::CPU* nCPU);
 
-        explicit PPU(ROM* nROM);
+        PPU(Clock* nMasterClock, ROM* nROM);
         ~PPU();
     };
 

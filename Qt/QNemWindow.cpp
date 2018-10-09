@@ -4,107 +4,43 @@
 
 #include "QNemWindow.h"
 
-#include "../Internal.h"
-#include "../Timer.h"
 #include "../Errors.h"
 
-#include <fstream>
 #include <iostream>
 
 #ifndef TIMER_TYPE
-#define QT_TIMER_TYPE Qt::CoarseTimer
+#define TIMER_TYPE Qt::CoarseTimer
 #endif
 
-char* loadSource(string path, int* length) {
-    std::ifstream stream(path, std::ios::in | std::ios::ate);
-    if (!stream.good()) throw Nem::ShaderNotFoundException(path);
-    *length = (int)stream.tellg();
-    char* shader = new char[*length];
-    stream.seekg(0, std::ios::beg);
-    stream.read(shader, *length);
-    stream.close();
-
-    return shader;
-}
-
-bool checkCompile(GLuint shader, string shaderName = "Shader") {
-    GLint status;
-    glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
-    if (!status) {
-        GLint logLength;
-        glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &logLength);
-        vector<char> log((unsigned long)logLength);
-        glGetShaderInfoLog(shader, logLength, nullptr, &log[0]);
-        std::cout << shaderName << " compile error: " << std::endl << string(log.begin(), log.end()) << std::endl;
-        return false;
+GLuint* makePatternData(Nem::ROM* rom) {
+    GLuint* data = new GLuint[(rom->chrROM.size() / 16) * 8 * 8];
+    for (int a = 0; a < rom->chrROM.size() / 16; a++) {
+        for (int b = 0; b < 8; b++) {
+            Byte bit = 0b1000000;
+            for (int c = 0; c < 8; c++) {
+                data[(a * 8 * 8) + b * 8 + c] =
+                        (GLuint)(
+                                (((rom->chrROM[a * 16 + 8 + b] & bit) == bit) << 1) +
+                                ((rom->chrROM[a * 16 + b] & bit) == bit));
+                bit = bit >> 1;
+            }
+        }
     }
-    return true;
+    return data;
 }
 
-bool checkLink(GLuint program, string programName = "Program") {
-    GLint status;
-    glGetProgramiv(program, GL_LINK_STATUS, &status);
-    if (!status) {
-        GLint logLength;
-        glGetProgramiv(program, GL_INFO_LOG_LENGTH, &logLength);
-        vector<char> log((unsigned long)logLength);
-        glGetProgramInfoLog(program, logLength, nullptr, &log[0]);
-        std::cout << programName << " link error: " << std::endl << string(log.begin(), log.end()) << std::endl;
-        return false;
+GLuint* makeNameTableData(Nem::PPU* ppu) {
+    GLuint* data = new GLuint[kilobyte(2)];
+    for (int a = 0; a < kilobyte(1); a++) {
+        data[a] = ppu->memory->nameTables[0][a];
+        data[a + kilobyte(1)] = ppu->memory->nameTables[1][a];
     }
-    return true;
+    return data;
 }
 
-bool QNemWindow::loadShaders() {
-    GLuint mapVertex = glCreateShader(GL_VERTEX_SHADER);
-    GLuint spriteVertex = glCreateShader(GL_VERTEX_SHADER);
-    GLuint palettedFragment = glCreateShader(GL_FRAGMENT_SHADER);
-
-    GLint mapVertexLength, spriteVertexLength, palettedFragmentLength;
-
-    const char* mapVertexSource = loadSource("map.vert", &mapVertexLength);
-    const char* spriteVertexSource = loadSource("sprite.vert", &spriteVertexLength);
-    const char* palettedFragmentSource = loadSource("paletted.frag", &palettedFragmentLength);
-
-    glShaderSource(mapVertex, 1, &mapVertexSource, &mapVertexLength);
-    glShaderSource(spriteVertex, 1, &spriteVertexSource, &spriteVertexLength);
-    glShaderSource(palettedFragment, 1, &palettedFragmentSource, &palettedFragmentLength);
-
-    delete[] mapVertexSource;
-    delete[] spriteVertexSource;
-    delete[] palettedFragmentSource;
-
-    glCompileShader(mapVertex);
-    glCompileShader(spriteVertex);
-    glCompileShader(palettedFragment);
-
-    if (!checkCompile(mapVertex, "Map Vertex")) return false;
-    if (!checkCompile(spriteVertex, "Sprite Vertex")) return false;
-    if (!checkCompile(palettedFragment, "Paletted Fragment")) return false;
-
-    backgroundProgram = glCreateProgram();
-    glAttachShader(backgroundProgram, mapVertex);
-    glAttachShader(backgroundProgram, palettedFragment);
-    glLinkProgram(backgroundProgram);
-    glDetachShader(backgroundProgram, mapVertex);
-    glDetachShader(backgroundProgram, palettedFragment);
-
-    if (!checkLink(backgroundProgram, "Background Program")) return false;
-
-    spriteProgram = glCreateProgram();
-    glAttachShader(spriteProgram, spriteVertex);
-    glAttachShader(spriteProgram, palettedFragment);
-    glLinkProgram(spriteProgram);
-    glDetachShader(spriteProgram, spriteVertex);
-    glDetachShader(spriteProgram, palettedFragment);
-
-    if (!checkLink(spriteProgram, "Sprite Program")) return false;
-
-    glDeleteShader(mapVertex);
-    glDeleteShader(spriteVertex);
-    glDeleteShader(palettedFragment);
-
-    return true;
+void QNemWindow::checkOpenGLErrors(string subtitle) {
+    GLenum error = glGetError();
+    if (error != GL_NO_ERROR) std::cout << "OpenGL Error " << subtitle << ": " << error << std::endl;
 }
 
 void QNemWindow::init() {
@@ -124,49 +60,75 @@ void QNemWindow::init() {
 
     initializeOpenGLFunctions();
 
-    if (!loadShaders()) exit(0);
+#ifdef MARIO_8057
+    emulator.cpu->wait8057();
+#endif
 
-    emulator.ppu->memory->palettes.setClearColor(0x00); // REMOVE LATER WHEN GRAPHICS_ONLY IS NOT DEFINED
-    Nem::Color color = Nem::palette2C02[emulator.ppu->memory->palettes.getClearColor()];
-    glClearColor(color.red, color.green, color.blue, 1);
+    if (!loadShaders()) exit(0);
+    loadUniforms();
+
+    emulator.ppu->memory->palettes.setClearColor(0x0d);
+    Nem::Color clearColor = Nem::palette2C02[emulator.ppu->memory->palettes.getClearColor()];
+    glClearColor(clearColor.red, clearColor.green, clearColor.blue, 1);
 
     glGenVertexArrays(1, &vao);
     glBindVertexArray(vao);
 
-    GLuint pTex[] = {
-            0x16, 0x04,
-            0x18, 0x09,
-    };
-
-    glGenTextures(1, &mainTexture);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, mainTexture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, 2, 2, 0, GL_RED, GL_UNSIGNED_INT, pTex);
-
     glGenSamplers(1, &sampler);
-    glBindSampler(0, sampler);
     glSamplerParameteri(sampler, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glSamplerParameteri(sampler, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glSamplerParameteri(sampler, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glSamplerParameteri(sampler, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glSamplerParameteri(sampler, GL_TEXTURE_WRAP_R, GL_REPEAT);
 
-//    GLfloat triangle[] = {
-//            1, 1,
-//            1, 0,
-//            0, 0,
-//    };
-//
-//    glGenBuffers(1, &buffer);
-//    glBindBuffer(GL_ARRAY_BUFFER, buffer);
-//    glBufferData(GL_ARRAY_BUFFER, sizeof(triangle), triangle, GL_STATIC_READ);
+    std::cout << "Loading... " << std::endl;
+
+    int spriteCount = (int)(emulator.rom->chrROM.size() / 16);
+    GLuint* patternTex = makePatternData(emulator.rom);
+
+//    std::cout << "Sprite Count: " << spriteCount << std::endl;
+//    std::cout << "[" << std::endl;
+//    for (int a = 0; a < spriteCount; a++) {
+//        std::cout << "\t[" << std::endl;
+//        for (int y = 0; y < 8; y++) {
+//            std::cout << "\t\t";
+//            for (int x = 0; x < 8; x++) {
+//                std::cout << patternTex[a * 8 * 8 + y * 8 + x];
+//            }
+//            std::cout << std::endl;
+//        }
+//        std::cout << "\t]" << std::endl;
+//    }
+//    std::cout << "]" << std::endl;
+
+    glGenTextures(1, &patternTexture);
+    glActiveTexture(GL_TEXTURE0 + 0);
+    glBindTexture(GL_TEXTURE_2D, patternTexture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_R32UI, 8, spriteCount * 8, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, patternTex);
+    glBindSampler(0, sampler);
+
+    delete[] patternTex;
+
+    // Hook up to real name table. (convert first!)
+    //GLuint colors[kilobyte(2)];
+    //for (int a = 0; a < kilobyte(2); a++) colors[a] = (GLuint)(a * 2 % 0x40);
+
+    GLuint* nameTableTex = makeNameTableData(emulator.ppu);
+
+    glGenTextures(1, &nameTableTexture);
+    glActiveTexture(GL_TEXTURE0 + 1);
+    glBindTexture(GL_TEXTURE_1D, nameTableTexture);
+    glTexImage1D(GL_TEXTURE_1D, 0, GL_R32UI, kilobyte(2), 0, GL_RED_INTEGER, GL_UNSIGNED_INT, nameTableTex);
+    glBindSampler(1, sampler);
+
+    delete[] nameTableTex;
 
     initialized = true;
 }
 
 void QNemWindow::clearColorListener(Byte value) {
     if (initialized) {
-        Nem::Color color = Nem::palette2C02[value];
-        glClearColor(color.red, color.green, color.blue, 1);
+
     }
 }
 
@@ -189,10 +151,11 @@ void QNemWindow::render() {
     glClear(GL_COLOR_BUFFER_BIT);
 
     glUseProgram(backgroundProgram);
-//    glBindBuffer(GL_ARRAY_BUFFER, buffer);
-//    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
-//    glEnableVertexAttribArray(0);
-    glDrawArrays(GL_TRIANGLES, 0, 30 * 5 * 6);
+    glUniform1i(uniformBkgNameTableDrawIndex, 0); // Set Table to 0
+    glUniform1i(uniformBkgPatternTableDrawIndex, 0); // Set Pattern Table to 0
+    glDrawArrays(GL_TRIANGLES, 0, 30 * 32 * 6); // Draw Background
+
+    checkOpenGLErrors("Main Loop");
 
     context->swapBuffers(this);
 
@@ -212,7 +175,7 @@ bool QNemWindow::event(QEvent* event) {
 }
 
 void QNemWindow::timerEvent(QTimerEvent* event) {
-    render();
+    requestUpdate();
 }
 
 QNemWindow::QNemWindow(string romPath) : emulator(romPath) {
@@ -244,11 +207,11 @@ QNemWindow::~QNemWindow() {
     delete cpuThread;
 
     glDeleteSamplers(1, &sampler);
-    glDeleteTextures(1, &mainTexture);
+    glDeleteTextures(1, &nameTableTexture);
+    glDeleteTextures(1, &patternTexture);
     glDeleteVertexArrays(1, &vao);
-    glDeleteBuffers(1, &buffer);
     glDeleteProgram(backgroundProgram);
-    glDeleteProgram(spriteProgram);
+    //glDeleteProgram(spriteProgram);
 
     delete context;
 }

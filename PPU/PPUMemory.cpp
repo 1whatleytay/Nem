@@ -9,96 +9,134 @@
 #include <iostream>
 
 namespace Nem {
-    string regionName(PPUMemory::Region region) {
+    string regionName(PPUMemoryRegion region) {
         switch (region) {
-            case PPUMemory::Region::PatternTable0: return "Pattern Table 0 (LEFT)";
-            case PPUMemory::Region::PatternTable1: return "Pattern Table 1 (RIGHT)";
-            case PPUMemory::Region::NameTable0: return "Name Table 0";
-            case PPUMemory::Region::NameTable1: return "Name Table 1";
-            case PPUMemory::Region::NameTable2: return "Name Table 2";
-            case PPUMemory::Region::NameTable3: return "Name Table 3";
-            case PPUMemory::Region::PaletteRam: return "Palette Ram";
+            case PPUMemoryRegion::PatternTable0: return "Pattern Table 0 (LEFT)";
+            case PPUMemoryRegion::PatternTable1: return "Pattern Table 1 (RIGHT)";
+            case PPUMemoryRegion::NameTable0: return "Name Table 0";
+            case PPUMemoryRegion::NameTable1: return "Name Table 1";
+            case PPUMemoryRegion::NameTable2: return "Name Table 2";
+            case PPUMemoryRegion::NameTable3: return "Name Table 3";
+            case PPUMemoryRegion::PaletteRam: return "Palette Ram";
         }
     }
 
     PPUMemory::MappedAddress PPUMemory::mapAddress(Address address) {
         if (address < 0x1000)
-            return { Region::PatternTable0, address };
+            return { PPUMemoryRegion::PatternTable0, address };
         else if (address < 0x2000)
-            return { Region::PatternTable1, address };
+            return { PPUMemoryRegion::PatternTable1, address };
         else if (address < 0x2400)
-            return { Region::NameTable0, address };
+            return { PPUMemoryRegion::NameTable0, address };
         else if (address < 0x2800)
-            return { Region::NameTable1, address };
+            return { PPUMemoryRegion::NameTable1, address };
         else if (address < 0x2C00)
-            return { Region::NameTable2, address };
+            return { PPUMemoryRegion::NameTable2, address };
         else if (address < 0x3000)
-            return { Region::NameTable3, address };
+            return { PPUMemoryRegion::NameTable3, address };
         else if (address < 0x3400)
-            return { Region::NameTable0, (Address)(address - 0x1000) };
+            return { PPUMemoryRegion::NameTable0, (Address)(address - 0x1000) };
         else if (address < 0x3800)
-            return { Region::NameTable1, (Address)(address - 0x1000) };
+            return { PPUMemoryRegion::NameTable1, (Address)(address - 0x1000) };
         else if (address < 0x3C00)
-            return { Region::NameTable2, (Address)(address - 0x1000) };
+            return { PPUMemoryRegion::NameTable2, (Address)(address - 0x1000) };
         else if (address < 0x3F00)
-            return { Region::NameTable3, (Address)(address - 0x1000) };
+            return { PPUMemoryRegion::NameTable3, (Address)(address - 0x1000) };
         else
-            return { Region::PaletteRam, (Address)((address - 0x3F00) % 0x0020 + 0x3F00) };
+            return { PPUMemoryRegion::PaletteRam, (Address)((address - 0x3F00) % 0x0020 + 0x3F00) };
+    }
+
+    int PPUMemory::getNameTableIndex(int index) {
+        switch (mirroring) {
+            case ROMHeader::Mirroring::Vertical:
+                switch (index) {
+                    case 0: return 0;
+                    case 1: return 1;
+                    case 2: return 0;
+                    case 3: return 1;
+                    default: return 0;
+                }
+            case ROMHeader::Mirroring::Horizontal:
+                switch (index) {
+                    case 0: return 0;
+                    case 1: return 0;
+                    case 2: return 1;
+                    case 3: return 1;
+                    default: return 0;
+                }
+        }
+        return 0;
+    }
+
+    int PPUMemory::getNameTableByIndex(int nameTable) {
+        switch (mirroring) {
+            case ROMHeader::Mirroring::Vertical:
+                switch (nameTable) {
+                    case 0: return 0;
+                    case 1: return 1;
+                    default: return 0;
+                }
+            case ROMHeader::Mirroring::Horizontal:
+                switch (nameTable) {
+                    case 0: return 0;
+                    case 1: return 1;
+                    default: return 0;
+                }
+        }
+        return 0;
     }
 
     Byte PPUMemory::getByte(Address address) {
         MappedAddress mappedAddress = mapAddress(address);
         switch (mappedAddress.region) {
             case PatternTable0:
-                //return ((Byte*)&patternTable0)[mappedAddress.effectiveAddress - mappedAddress.region];
                 return rom->chrROM[mappedAddress.effectiveAddress - mappedAddress.region];
             case PatternTable1:
-                //return ((Byte*)&patternTable1)[mappedAddress.effectiveAddress - mappedAddress.region];
-                return rom->chrROM[mappedAddress.effectiveAddress - mappedAddress.region + PatternTable0];
+                return rom->chrROM[mappedAddress.effectiveAddress - mappedAddress.region + PatternTable1];
             case NameTable0:
-                return ((Byte*)nameTable0)[mappedAddress.effectiveAddress - mappedAddress.region];
+                return nameTables[getNameTableIndex(0)][mappedAddress.effectiveAddress - mappedAddress.region];
             case NameTable1:
-                return ((Byte*)nameTable1)[mappedAddress.effectiveAddress - mappedAddress.region];
+                return nameTables[getNameTableIndex(1)][mappedAddress.effectiveAddress - mappedAddress.region];
             case NameTable2:
-                return ((Byte*)nameTable2)[mappedAddress.effectiveAddress - mappedAddress.region];
+                return nameTables[getNameTableIndex(2)][mappedAddress.effectiveAddress - mappedAddress.region];
             case NameTable3:
-                return ((Byte*)nameTable3)[mappedAddress.effectiveAddress - mappedAddress.region];
+                return nameTables[getNameTableIndex(3)][mappedAddress.effectiveAddress - mappedAddress.region];
             case PaletteRam:
                 switch (mappedAddress.effectiveAddress) {
                     case 0x3F10:
-                    case 0x3F00: return palettes.getClearColor();
+                    case 0x3F00: return palettes.clearColor;
 
-                    case 0x3F01: return palettes.getBackgroundPalette(0).colorA;
-                    case 0x3F02: return palettes.getBackgroundPalette(0).colorB;
-                    case 0x3F03: return palettes.getBackgroundPalette(0).colorC;
+                    case 0x3F01: return palettes.background[0].colorA;
+                    case 0x3F02: return palettes.background[0].colorB;
+                    case 0x3F03: return palettes.background[0].colorC;
 
-                    case 0x3F05: return palettes.getBackgroundPalette(1).colorA;
-                    case 0x3F06: return palettes.getBackgroundPalette(1).colorB;
-                    case 0x3F07: return palettes.getBackgroundPalette(1).colorC;
+                    case 0x3F05: return palettes.background[1].colorA;
+                    case 0x3F06: return palettes.background[1].colorB;
+                    case 0x3F07: return palettes.background[1].colorC;
 
-                    case 0x3F09: return palettes.getBackgroundPalette(2).colorA;
-                    case 0x3F0A: return palettes.getBackgroundPalette(2).colorB;
-                    case 0x3F0B: return palettes.getBackgroundPalette(2).colorC;
+                    case 0x3F09: return palettes.background[2].colorA;
+                    case 0x3F0A: return palettes.background[2].colorB;
+                    case 0x3F0B: return palettes.background[2].colorC;
 
-                    case 0x3F0D: return palettes.getBackgroundPalette(3).colorA;
-                    case 0x3F0E: return palettes.getBackgroundPalette(3).colorB;
-                    case 0x3F0F: return palettes.getBackgroundPalette(3).colorC;
+                    case 0x3F0D: return palettes.background[3].colorA;
+                    case 0x3F0E: return palettes.background[3].colorB;
+                    case 0x3F0F: return palettes.background[3].colorC;
 
-                    case 0x3F11: return palettes.getSpritePalette(0).colorA;
-                    case 0x3F12: return palettes.getSpritePalette(0).colorB;
-                    case 0x3F13: return palettes.getSpritePalette(0).colorC;
+                    case 0x3F11: return palettes.sprite[0].colorA;
+                    case 0x3F12: return palettes.sprite[0].colorB;
+                    case 0x3F13: return palettes.sprite[0].colorC;
 
-                    case 0x3F15: return palettes.getSpritePalette(1).colorA;
-                    case 0x3F16: return palettes.getSpritePalette(1).colorB;
-                    case 0x3F17: return palettes.getSpritePalette(1).colorC;
+                    case 0x3F15: return palettes.sprite[1].colorA;
+                    case 0x3F16: return palettes.sprite[1].colorB;
+                    case 0x3F17: return palettes.sprite[1].colorC;
 
-                    case 0x3F19: return palettes.getSpritePalette(2).colorA;
-                    case 0x3F1A: return palettes.getSpritePalette(2).colorB;
-                    case 0x3F1B: return palettes.getSpritePalette(2).colorC;
+                    case 0x3F19: return palettes.sprite[2].colorA;
+                    case 0x3F1A: return palettes.sprite[2].colorB;
+                    case 0x3F1B: return palettes.sprite[2].colorC;
 
-                    case 0x3F1D: return palettes.getSpritePalette(3).colorA;
-                    case 0x3F1E: return palettes.getSpritePalette(3).colorB;
-                    case 0x3F1F: return palettes.getSpritePalette(3).colorC;
+                    case 0x3F1D: return palettes.sprite[3].colorA;
+                    case 0x3F1E: return palettes.sprite[3].colorB;
+                    case 0x3F1F: return palettes.sprite[3].colorC;
 
                     default: break;
                 }
@@ -113,133 +151,61 @@ namespace Nem {
     }
     void PPUMemory::setByte(Address address, Byte value) {
         MappedAddress mappedAddress = mapAddress(address);
-        PPUPalette palette;
+        edits.addEdit(mappedAddress.region);
         switch (mappedAddress.region) {
-            case PatternTable0:
-                //((Byte*)&patternTable0)[mappedAddress.effectiveAddress - mappedAddress.region] = value;
-            case PatternTable1:
-                //((Byte*)&patternTable1)[mappedAddress.effectiveAddress - mappedAddress.region] = value;
-                break;
             case NameTable0:
-                ((Byte*)nameTable0)[mappedAddress.effectiveAddress - mappedAddress.region] = value;
+                nameTables[getNameTableIndex(0)][mappedAddress.effectiveAddress - mappedAddress.region] = value;
+                return;
             case NameTable1:
-                ((Byte*)nameTable1)[mappedAddress.effectiveAddress - mappedAddress.region] = value;
+                nameTables[getNameTableIndex(1)][mappedAddress.effectiveAddress - mappedAddress.region] = value;
+                return;
             case NameTable2:
-                ((Byte*)nameTable2)[mappedAddress.effectiveAddress - mappedAddress.region] = value;
+                nameTables[getNameTableIndex(2)][mappedAddress.effectiveAddress - mappedAddress.region] = value;
+                return;
             case NameTable3:
-                ((Byte*)nameTable3)[mappedAddress.effectiveAddress - mappedAddress.region] = value;
+                nameTables[getNameTableIndex(3)][mappedAddress.effectiveAddress - mappedAddress.region] = value;
+                return;
             case PaletteRam:
                 switch (mappedAddress.effectiveAddress) {
                     case 0x3F10:
-                    case 0x3F00: palettes.setClearColor(value);
+                    case 0x3F00: palettes.clearColor = value; return;
 
-                    case 0x3F01:
-                        palette = palettes.getBackgroundPalette(0);
-                        palette.colorA = value;
-                        palettes.setBackgroundPalette(0, palette);
-                    case 0x3F02:
-                        palette = palettes.getBackgroundPalette(0);
-                        palette.colorB = value;
-                        palettes.setBackgroundPalette(0, palette);
-                    case 0x3F03:
-                        palette = palettes.getBackgroundPalette(0);
-                        palette.colorC = value;
-                        palettes.setBackgroundPalette(0, palette);
+                    case 0x3F01: palettes.background[0].colorA = value; return;
+                    case 0x3F02: palettes.background[0].colorB = value; return;
+                    case 0x3F03: palettes.background[0].colorC = value; return;
 
-                    case 0x3F05:
-                        palette = palettes.getBackgroundPalette(1);
-                        palette.colorA = value;
-                        palettes.setBackgroundPalette(1, palette);
-                    case 0x3F06:
-                        palette = palettes.getBackgroundPalette(1);
-                        palette.colorB = value;
-                        palettes.setBackgroundPalette(1, palette);
-                    case 0x3F07:
-                        palette = palettes.getBackgroundPalette(1);
-                        palette.colorC = value;
-                        palettes.setBackgroundPalette(1, palette);
+                    case 0x3F05: palettes.background[1].colorA = value; return;
+                    case 0x3F06: palettes.background[1].colorB = value; return;
+                    case 0x3F07: palettes.background[1].colorC = value; return;
 
-                    case 0x3F09:
-                        palette = palettes.getBackgroundPalette(2);
-                        palette.colorA = value;
-                        palettes.setBackgroundPalette(2, palette);
-                    case 0x3F0A:
-                        palette = palettes.getBackgroundPalette(2);
-                        palette.colorB = value;
-                        palettes.setBackgroundPalette(2, palette);
-                    case 0x3F0B:
-                        palette = palettes.getBackgroundPalette(2);
-                        palette.colorC = value;
-                        palettes.setBackgroundPalette(2, palette);
+                    case 0x3F09: palettes.background[2].colorA = value; return;
+                    case 0x3F0A: palettes.background[2].colorB = value; return;
+                    case 0x3F0B: palettes.background[2].colorC = value; return;
 
-                    case 0x3F0D:
-                        palette = palettes.getBackgroundPalette(3);
-                        palette.colorA = value;
-                        palettes.setBackgroundPalette(3, palette);
-                    case 0x3F0E:
-                        palette = palettes.getBackgroundPalette(3);
-                        palette.colorB = value;
-                        palettes.setBackgroundPalette(3, palette);
-                    case 0x3F0F:
-                        palette = palettes.getBackgroundPalette(3);
-                        palette.colorC = value;
-                        palettes.setBackgroundPalette(3, palette);
+                    case 0x3F0D: palettes.background[3].colorA = value; return;
+                    case 0x3F0E: palettes.background[3].colorB = value; return;
+                    case 0x3F0F: palettes.background[3].colorC = value; return;
 
-                    case 0x3F11:
-                        palette = palettes.getSpritePalette(0);
-                        palette.colorA = value;
-                        palettes.setSpritePalette(0, palette);
-                    case 0x3F12:
-                        palette = palettes.getSpritePalette(0);
-                        palette.colorB = value;
-                        palettes.setSpritePalette(0, palette);
-                    case 0x3F13:
-                        palette = palettes.getSpritePalette(0);
-                        palette.colorC = value;
-                        palettes.setSpritePalette(0, palette);
+                    case 0x3F11: palettes.sprite[0].colorA = value; return;
+                    case 0x3F12: palettes.sprite[0].colorB = value; return;
+                    case 0x3F13: palettes.sprite[0].colorC = value; return;
 
-                    case 0x3F15:
-                        palette = palettes.getSpritePalette(1);
-                        palette.colorA = value;
-                        palettes.setSpritePalette(1, palette);
-                    case 0x3F16:
-                        palette = palettes.getSpritePalette(1);
-                        palette.colorB = value;
-                        palettes.setSpritePalette(1, palette);
-                    case 0x3F17:
-                        palette = palettes.getSpritePalette(1);
-                        palette.colorC = value;
-                        palettes.setSpritePalette(1, palette);
+                    case 0x3F15: palettes.sprite[1].colorA = value; return;
+                    case 0x3F16: palettes.sprite[1].colorB = value; return;
+                    case 0x3F17: palettes.sprite[1].colorC = value; return;
 
-                    case 0x3F19:
-                        palette = palettes.getSpritePalette(2);
-                        palette.colorA = value;
-                        palettes.setSpritePalette(2, palette);
-                    case 0x3F1A:
-                        palette = palettes.getSpritePalette(2);
-                        palette.colorB = value;
-                        palettes.setSpritePalette(2, palette);
-                    case 0x3F1B:
-                        palette = palettes.getSpritePalette(2);
-                        palette.colorC = value;
-                        palettes.setSpritePalette(2, palette);
+                    case 0x3F19: palettes.sprite[2].colorA = value; return;
+                    case 0x3F1A: palettes.sprite[2].colorB = value; return;
+                    case 0x3F1B: palettes.sprite[2].colorC = value; return;
 
-                    case 0x3F1D:
-                        palette = palettes.getSpritePalette(3);
-                        palette.colorA = value;
-                        palettes.setSpritePalette(3, palette);
-                    case 0x3F1E:
-                        palette = palettes.getSpritePalette(3);
-                        palette.colorB = value;
-                        palettes.setSpritePalette(3, palette);
-                    case 0x3F1F:
-                        palette = palettes.getSpritePalette(3);
-                        palette.colorC = value;
-                        palettes.setSpritePalette(3, palette);
+                    case 0x3F1D: palettes.sprite[3].colorA = value; return;
+                    case 0x3F1E: palettes.sprite[3].colorB = value; return;
+                    case 0x3F1F: palettes.sprite[3].colorC = value; return;
 
                     default: break;
                 }
                 break;
+            default: break;
         }
         std::cout << "PPU Write @ $" << makeHex(address) << " is unimplemented!"
                   << " Value: " << (int)value << " Region: " << regionName(mappedAddress.region) << std::endl;
@@ -253,19 +219,28 @@ namespace Nem {
     PPUMemory::PPUMemory(ROM* nRom) {
         rom = nRom;
 
-        switch (rom->header.getMirroring()) {
-            case ROMHeader::Mirroring::Vertical:
-                nameTable0 = &realNameTable0;
-                nameTable1 = &realNameTable1;
-                nameTable2 = &realNameTable0;
-                nameTable3 = &realNameTable1;
-                break;
-            case ROMHeader::Mirroring::Horizontal:
-                nameTable0 = &realNameTable0;
-                nameTable1 = &realNameTable0;
-                nameTable2 = &realNameTable1;
-                nameTable3 = &realNameTable1;
-                break;
+        mirroring = rom->header.getMirroring();
+    }
+
+    void PPUMemoryEdits::addEdit(PPUMemoryRegion region) {
+        switch (region) {
+            case PPUMemoryRegion::PatternTable0:
+            case PPUMemoryRegion::PatternTable1:
+                patternTable = true; return;
+            case PPUMemoryRegion::NameTable0:
+            case PPUMemoryRegion::NameTable1:
+            case PPUMemoryRegion::NameTable2:
+            case PPUMemoryRegion::NameTable3:
+                nameTable = true; return;
+            case PPUMemoryRegion::PaletteRam:
+                paletteRam = true; return;
+            default: return;
         }
+    }
+
+    void PPUMemoryEdits::reset() {
+        patternTable = false;
+        nameTable = false;
+        paletteRam = false;
     }
 }

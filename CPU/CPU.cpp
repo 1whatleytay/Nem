@@ -3,18 +3,33 @@
 //
 
 #include "CPU.h"
+#include "../Clock/Clock.h"
 #include "Codes.h"
 
+#include <iostream>
+
 namespace Nem {
+#ifdef MARIO_8057
+    bool reached8057 = false;
+
+    void CPU::wait8057() {
+        while(!reached8057) { }
+    }
+#endif
+
     void CPU::processIRQ() {
 
     }
     void CPU::processNMI() {
         if (nmi) {
+            std::cout << "BA: " << makeHex(registers->programCounter) << std::endl;
             pushAddress(registers->programCounter);
             pushByte(registers->status);
             registers->programCounter = memory->getNMIVector();
             registers->programCounter--;
+#ifdef MARIO_8057
+            if (!reached8057) std::cout << "DID NOT REACH 8057!" << std::endl;
+#endif
 #ifdef RESET_NMI
             nmi = false;
 #endif
@@ -77,35 +92,41 @@ namespace Nem {
 
     void CPU::setPPU(PPU* nPPU) { memory->setPPU(nPPU); }
 
-#ifdef PRINT_INSTRUCTIONS
-    std::ofstream outFile = std::ofstream("/Users/desgroup/Desktop/nem.log.txt");
-#endif
-
     void CPU::step() {
         Address index = ++registers->programCounter;
+
+#ifdef MARIO_8057
+        reached8057 = true;
+#endif
         Byte instructionId = memory->getByte(index);
         Instruction instruction = opFunctions[instructionId];
+
 #ifdef PRINT_INSTRUCTIONS
         outFile << makeHex(registers->programCounter) << ", " << makeHex(instructionId) << ", " << opNames[instructionId] << ", "
         << makeHex(registers->accumulator) << ", " << makeHex(registers->indexX) << ", " << makeHex(registers->indexY) << ", "
         << makeHex(registers->status) << ", " << makeHex(registers->stackPointer) << ", " << cycles << "\n";
 #endif
+        long long cyclesBefore = cycles;
+
         int length = instruction(this);
         cycles += 2; // Every instruction usually takes at least 2 cycles.
+
+        while (!masterClock->cpuReady(cycles - cyclesBefore)) { }
+
         registers->programCounter += length;
+
+        processIRQ();
         processNMI();
     }
 
     void CPU::exec() {
-        while (!stopExecution) {
-            step();
-        }
+        while (!stopExecution) { step(); }
     }
     void CPU::stopExec() {
         stopExecution = true;
     }
 
-    CPU::CPU(ROM* rom) {
+    CPU::CPU(Clock* nMasterClock, ROM* rom) : masterClock(nMasterClock) {
         memory = new CPUMemory(rom);
         registers = new CPURegisters();
 
@@ -120,5 +141,9 @@ namespace Nem {
     CPU::~CPU() {
         delete memory;
         delete registers;
+
+#ifdef PRINT_INSTRUCTIONS
+      outFile.close();
+#endif
     }
 }

@@ -12,6 +12,10 @@ class CPU;
 namespace Nem {
     bool isNegative(Byte value);
 
+    inline bool afterPage(Address a, Address b) {
+        return hi(a) < hi(b);
+    }
+
     inline bool skippedPage(Address pointer, short offset) {
         return pointer / 256 < (pointer + offset) / 256;
     }
