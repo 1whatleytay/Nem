@@ -1082,9 +1082,10 @@ namespace Nem {
 
     int RTIInstruction(CPU *cpu) {
         cpu->registers->status = (Byte) (cpu->popByte() | 0b00100000);
-#ifdef RTI_PC_SET
         Address pointer = cpu->popAddress();
         cpu->registers->programCounter = pointer;
+#ifdef RTI_MINUS_ONE
+        cpu->registers->programCounter--;
 #endif
         cpu->cycles += 4;
         return 0;
@@ -1365,6 +1366,9 @@ namespace Nem {
     }
 
     int STAInstruction_a(CPU *cpu) {
+//        if (cpu->nextAddress() == 0x4014) {
+//            std::cout << "OAM WRITE. PC: " << makeHex(cpu->registers->programCounter) << " <- " << (int)cpu->registers->accumulator << std::endl;
+//        }
         cpu->memory->setByte(cpu->nextAddress(), cpu->registers->accumulator);
         cpu->cycles += 2;
         return 2;

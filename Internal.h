@@ -17,18 +17,19 @@ typedef uint16_t Address;
 
 #define kilobyte(a) a * 1024
 
-#define MARIO_8057
-#define FORCE_ENTRY 0xc000
-#define MIRROR_ROM
-#define RESET_NMI
+//#define NULL_CONTROLLER_COMPLAIN
+//#define MARIO_8057
+#define FORCE_ENTRY 0x8000
+//#define RTI_MINUS_ONE
 //#define PRINT_INSTRUCTIONS
-#define RTI_PC_SET
+//#define CPU_ONLY
 
 namespace Nem {
     inline Byte lo(Address value) { return (Byte)(value & 0xff); }
     inline Byte hi(Address value) { return (Byte)((value >> 8) & 0xff); }
     inline Address makeAddress(Byte a, Byte b) { return (Address)(b * 0x100 + a); }
     string makeHex(int hex);
+    string makeBin(int bin);
     short makeSigned(Byte value);
 
     Address putByte(bool hi, Address address, Byte write);

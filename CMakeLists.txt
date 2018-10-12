@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.12)
 project(Nem)
 
 set(CMAKE_CXX_STANDARD 11)
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=undefined -O1 -fno-omit-frame-pointer -g")
 
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
@@ -15,7 +16,6 @@ if (APPLE)
 endif()
 
 set(Sources
-        Nem.h
 
         Emulator.h
         Emulator.cpp
@@ -43,7 +43,7 @@ set(Sources
         Display/Display.cpp
         Display/Shaders.cpp
 
-        main.cpp)
+        main.cpp Controller/Controller.cpp Controller/Controller.h Mapper/Mapper.cpp Mapper/Mapper.h)
 
 configure_file(Shaders/map.vert ${CMAKE_CURRENT_BINARY_DIR}/map.vert COPYONLY)
 configure_file(Shaders/sprite.vert ${CMAKE_CURRENT_BINARY_DIR}/sprite.vert COPYONLY)

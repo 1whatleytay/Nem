@@ -42,7 +42,18 @@ namespace Nem {
         const char* what() const noexcept override {
             return ("Rom is " + romIssue).c_str();
         }
+
         explicit RomInvalidException(std::string nRomIssue) : romIssue(nRomIssue) { }
+    };
+
+    class RomUnimplementedException: public std::exception {
+        std::string issue;
+    public:
+        const char* what() const noexcept override {
+            return ("Rom is using unimplemented " + issue).c_str();
+        }
+
+        explicit RomUnimplementedException(std::string nIssue) : issue(nIssue) { }
     };
 }
 

@@ -4,7 +4,7 @@
 
 #include "PPU.h"
 
-#include "../ROM/ROM.h"
+#include "../Mapper/Mapper.h"
 
 #include <iostream>
 
@@ -90,9 +90,11 @@ namespace Nem {
         MappedAddress mappedAddress = mapAddress(address);
         switch (mappedAddress.region) {
             case PatternTable0:
-                return rom->chrROM[mappedAddress.effectiveAddress - mappedAddress.region];
+                return mapper->getCHRByte(mappedAddress.effectiveAddress);
+                //return patternTables[0][mappedAddress.effectiveAddress - mappedAddress.region];
             case PatternTable1:
-                return rom->chrROM[mappedAddress.effectiveAddress - mappedAddress.region + PatternTable1];
+                return mapper->getCHRByte(mappedAddress.effectiveAddress);
+                //return patternTables[1][mappedAddress.effectiveAddress - mappedAddress.region];
             case NameTable0:
                 return nameTables[getNameTableIndex(0)][mappedAddress.effectiveAddress - mappedAddress.region];
             case NameTable1:
@@ -105,6 +107,15 @@ namespace Nem {
                 switch (mappedAddress.effectiveAddress) {
                     case 0x3F10:
                     case 0x3F00: return palettes.clearColor;
+
+                    case 0x3F14:
+                    case 0x3F04: return palettes.extra[0];
+
+                    case 0x3F18:
+                    case 0x3F08: return palettes.extra[1];
+
+                    case 0x3F1C:
+                    case 0x3F0C: return palettes.extra[2];
 
                     case 0x3F01: return palettes.background[0].colorA;
                     case 0x3F02: return palettes.background[0].colorB;
@@ -153,6 +164,14 @@ namespace Nem {
         MappedAddress mappedAddress = mapAddress(address);
         edits.addEdit(mappedAddress.region);
         switch (mappedAddress.region) {
+            case PatternTable0:
+                mapper->setCHRByte(mappedAddress.effectiveAddress, value);
+                //patternTables[0][mappedAddress.effectiveAddress - mappedAddress.region] = value;
+                return;
+            case PatternTable1:
+                mapper->setCHRByte(mappedAddress.effectiveAddress, value);
+                //patternTables[1][mappedAddress.effectiveAddress - mappedAddress.region] = value;
+                return;
             case NameTable0:
                 nameTables[getNameTableIndex(0)][mappedAddress.effectiveAddress - mappedAddress.region] = value;
                 return;
@@ -169,6 +188,15 @@ namespace Nem {
                 switch (mappedAddress.effectiveAddress) {
                     case 0x3F10:
                     case 0x3F00: palettes.clearColor = value; return;
+
+                    case 0x3F14:
+                    case 0x3F04: palettes.extra[0] = value; return;
+
+                    case 0x3F18:
+                    case 0x3F08: palettes.extra[1] = value; return;
+
+                    case 0x3F1C:
+                    case 0x3F0C: palettes.extra[2] = value; return;
 
                     case 0x3F01: palettes.background[0].colorA = value; return;
                     case 0x3F02: palettes.background[0].colorB = value; return;
@@ -216,10 +244,14 @@ namespace Nem {
         setByte(address + (Address)1, hiByte);
     }
 
-    PPUMemory::PPUMemory(ROM* nRom) {
-        rom = nRom;
+    PPUMemory::PPUMemory(Mapper* nMapper) : mapper(nMapper) {
+//        std::memset(patternTables[0], 0, 0x1000);
+//        std::memset(patternTables[1], 0, 0x1000);
+//
+//        std::memcpy(patternTables[0], &rom->chrROM[0], rom->chrROM.size() / 2);
+//        std::memcpy(patternTables[1], &rom->chrROM[0x1000], rom->chrROM.size() / 2);
 
-        mirroring = rom->header.getMirroring();
+        mirroring = mapper->getHeader()->getMirroring();
     }
 
     void PPUMemoryEdits::addEdit(PPUMemoryRegion region) {
@@ -242,5 +274,6 @@ namespace Nem {
         patternTable = false;
         nameTable = false;
         paletteRam = false;
+        oam = false;
     }
 }

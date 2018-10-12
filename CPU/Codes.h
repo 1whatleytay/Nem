@@ -282,8 +282,8 @@ namespace Nem {
 //    int LASInstruction_a_y(CPU* cpu);
 //    int AXSInstruction_i(CPU* cpu);
 
-    extern Instruction opFunctions[];
-    extern string opNames[];
+    extern Instruction opFunctions[256];
+    extern string opNames[256];
 }
 
 #endif //NEM_OPCODES_H

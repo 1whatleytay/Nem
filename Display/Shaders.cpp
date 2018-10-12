@@ -4,6 +4,8 @@
 
 #include "Display.h"
 
+#include "../PPU/PPU.h"
+
 #include <fstream>
 #include <iostream>
 
@@ -80,15 +82,10 @@ namespace Nem {
         return data;
     }
 
-    void Display::loadPPUPalette(GLuint program, Nem::PPUPalette palette, string location) {
-        GLint colorA = glGetUniformLocation(program, (location + ".colorA").c_str());
-        GLint colorB = glGetUniformLocation(program, (location + ".colorB").c_str());
-        GLint colorC = glGetUniformLocation(program, (location + ".colorC").c_str());
-
-        glUseProgram(program);
-        glUniform1ui(colorA, (GLuint)palette.colorA);
-        glUniform1ui(colorB, (GLuint)palette.colorB);
-        glUniform1ui(colorC, (GLuint)palette.colorC);
+    vector<GLuint> Display::makeOAMData(PPU* ppu) {
+        vector<GLuint> data = vector<GLuint>(64 * 4);
+        for (int a = 0; a < 64 * 4; a++) data[a] = ppu->memory->oam[a];
+        return data;
     }
 
     bool Display::loadShaders() {
@@ -151,9 +148,24 @@ namespace Nem {
         uniformBkgPaletteSampler = glGetUniformLocation(backgroundProgram, "palette");
         uniformBkgNameTableDrawIndex = glGetUniformLocation(backgroundProgram, "nameTableDrawIndex");
         uniformBkgPatternTableDrawIndex = glGetUniformLocation(backgroundProgram, "patternTableDrawIndex");
+        uniformBkgScrollX = glGetUniformLocation(backgroundProgram, "scrollX");
+        uniformBkgScrollY = glGetUniformLocation(backgroundProgram, "scrollY");
 
         glUniform1i(uniformBkgPatternSampler, 0);
         glUniform1i(uniformBkgNameTableSampler, 1);
         glUniform1i(uniformBkgPaletteSampler, 2);
+        glUniform1i(uniformBkgScrollX, 0);
+        glUniform1i(uniformBkgScrollY, 0);
+
+        glUseProgram(spriteProgram);
+
+        uniformSprPatternSampler = glGetUniformLocation(spriteProgram, "patternTable");
+        uniformSprPaletteSampler = glGetUniformLocation(spriteProgram, "palette");
+        uniformSprOAMSampler = glGetUniformLocation(spriteProgram, "oam");
+        uniformSprPatternTableDrawIndex = glGetUniformLocation(spriteProgram, "patternTableDrawIndex");
+
+        glUniform1i(uniformSprPatternSampler, 0);
+        glUniform1i(uniformSprPaletteSampler, 2);
+        glUniform1i(uniformSprOAMSampler, 3);
     }
 }

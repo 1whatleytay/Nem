@@ -2,18 +2,21 @@
 // Created by Taylor Whatley on 2018-09-19.
 //
 
-#include "../Nem.h"
+#include "CPU.h"
+#include "../PPU/PPU.h"
+#include "../Mapper/Mapper.h"
+#include "../Controller/Controller.h"
 #include "../Errors.h"
 
 #include <iostream>
 
 namespace Nem {
-
     string regionName(CPUMemoryRegion region) {
         switch (region) {
             case CPUMemoryRegion::WorkRam: return "Work Ram";
             case CPUMemoryRegion::PPUIO: return "PPU Control Registers";
             case CPUMemoryRegion::APUIO: return "APU/IO Registers";
+            case CPUMemoryRegion::Debug: return "Debug Memory";
             case CPUMemoryRegion::SRAM: return "SRAM";
             case CPUMemoryRegion::PRGRom: return "Program ROM";
         }
@@ -27,15 +30,11 @@ namespace Nem {
         else if (address < 0x4020)
             return { CPUMemoryRegion::APUIO, address };
         else if (address < 0x6000)
+            return { CPUMemoryRegion::Debug, address };
+        else if (address < 0x8000)
             return { CPUMemoryRegion::SRAM, address };
         else
-            return { CPUMemoryRegion::PRGRom,
-#ifdef MIRROR_ROM
-                     (Address)((address - 0x8000) % 0x4000 + 0x8000)
-#else
-                     address
-#endif
-        };
+            return { CPUMemoryRegion::PRGRom, address };
     }
 
     Byte CPUMemory::getByte(Address address) {
@@ -46,20 +45,35 @@ namespace Nem {
             case PPUIO:
                 switch (mappedAddress.effectiveAddress) {
                     case 0x2002:
-                        return ppu->registers->status;
+                        ppu->registers->flipSpriteZero = !ppu->registers->flipSpriteZero;
+                        return (Byte)(ppu->registers->status & ~0b01000000) | (Byte)( 0b01000000 * ppu->registers->flipSpriteZero);
                     case 0x2004:
-                        return ppu->registers->oamData;
+                        return ppu->memory->oam[ppu->registers->oamAddress];
                     case 0x2007:
                         return ppu->memory->getByte(ppu->registers->address);
                     default: break;
                 }
                 break;
             case APUIO:
+                switch (mappedAddress.effectiveAddress) {
+                    case 0x4016:
+                        if (controllers[0]) return controllers[0]->read();
+                        std::cout << "Invalid controller0." << std::endl;
+                        return 0;
+                    case 0x4017:
+                        if (controllers[1]) return controllers[1]->read();
+                        std::cout << "Invalid controller1." << std::endl;
+                        return 0;
+                    default: break;
+                }
+                break;
+            case Debug:
                 break;
             case SRAM:
-                break;
+                return mapper->getRAMByte(mappedAddress.effectiveAddress);
             case PRGRom:
-                return rom->prgROM[mappedAddress.effectiveAddress - mappedAddress.region];
+                return mapper->getPRGByte(mappedAddress.effectiveAddress);
+                //return rom->prgROM[mappedAddress.effectiveAddress - mappedAddress.region];
         }
         std::cout << "Read @ $" << makeHex(address) << " is unimplemented!"
         << " Region: " << regionName(mappedAddress.region) << std::endl;
@@ -89,7 +103,8 @@ namespace Nem {
                         ppu->registers->oamAddress = value;
                         return;
                     case 0x2004:
-                        ppu->registers->oamData = value;
+                        ppu->memory->oam[ppu->registers->oamAddress] = value;
+                        ppu->memory->edits.oam = true;
                         return;
                     case 0x2005:
                         ppu->registers->scroll = putByte(ppu->registers->scrollWrite, ppu->registers->scroll, value);
@@ -108,11 +123,29 @@ namespace Nem {
                 }
                 break;
             case APUIO:
+                switch (mappedAddress.effectiveAddress) {
+                    case 0x4014:
+                        for (Address a = 0; a < 0x100; a++) {
+                            ppu->memory->oam[a] = getByte(value * (Address)0x100 + a);
+                        }
+                        ppu->memory->edits.oam = true;
+                        cpu->waitCycles(553 + cpu->cycles % 2);
+                        return;
+                    case 0x4016:
+                        if (controllers[0]) controllers[0]->write(value);
+                        if (controllers[1]) controllers[1]->write(value);
+                        return;
+                    default: break;
+                }
+                break;
+            case Debug:
                 break;
             case SRAM:
-                break;
+                mapper->setRAMByte(mappedAddress.effectiveAddress, value);
+                return;
             case PRGRom:
-                break;
+                mapper->setPRGByte(mappedAddress.effectiveAddress, value);
+                return;
         }
         std::cout << "Write @ $" << makeHex(address) << " is unimplemented!"
         << " Value: " << (int)value << " Region: " << regionName(mappedAddress.region) << std::endl;
@@ -135,25 +168,25 @@ namespace Nem {
 
     // Force disable program rom mirroring
     Address CPUMemory::getNMIVector() {
-        return makeAddress(rom->prgROM[0xFFFA - CPUMemoryRegion::PRGRom],
-                           rom->prgROM[0xFFFB - CPUMemoryRegion::PRGRom]);
+        return mapper->getNMIVector();
+//        return makeAddress(rom->prgROM[0xFFFA - CPUMemoryRegion::PRGRom],
+//                           rom->prgROM[0xFFFB - CPUMemoryRegion::PRGRom]);
     }
     Address CPUMemory::getResetVector() {
-        return makeAddress(rom->prgROM[0xFFFC - CPUMemoryRegion::PRGRom],
-                           rom->prgROM[0xFFFD - CPUMemoryRegion::PRGRom]);
+        return mapper->getResetVector();
+//        return makeAddress(rom->prgROM[0xFFFC - CPUMemoryRegion::PRGRom],
+//                           rom->prgROM[0xFFFD - CPUMemoryRegion::PRGRom]);
     }
     Address CPUMemory::getIRQVector() {
-        return makeAddress(rom->prgROM[0xFFFE - CPUMemoryRegion::PRGRom],
-                           rom->prgROM[0xFFFF - CPUMemoryRegion::PRGRom]);
+        return mapper->getIRQVector();
+//        return makeAddress(rom->prgROM[0xFFFE - CPUMemoryRegion::PRGRom],
+//                           rom->prgROM[0xFFFF - CPUMemoryRegion::PRGRom]);
     }
 
-    void CPUMemory::setPPU(PPU* nPPU) {
-        ppu = nPPU;
-    }
+    void CPUMemory::setPPU(PPU* nPPU) { ppu = nPPU; }
+    void CPUMemory::setController(int index, ControllerInterface* controller) { controllers[index] = controller; }
 
-    CPUMemory::CPUMemory(Nem::ROM *nRom) {
-        rom = nRom;
-
+    CPUMemory::CPUMemory(CPU* nCPU, Mapper* nMapper) : cpu(nCPU), mapper(nMapper) {
 //        setByte(0x4015, 0);
 //        setByte(0x4017, 0);
 //        for (Address a = 0x4000; a < 0x4010; a++) setByte(a, 0);

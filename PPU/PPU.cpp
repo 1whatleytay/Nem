@@ -12,9 +12,8 @@ namespace Nem {
         if (isControlSet(PPURegisters::ControlFlags::VBlankNMI))
             cpu->nmi = true;
         registers->status |= 0b10000000;
-        masterClock->ppuReady(3);
+        masterClock->ppuReady(360);
         registers->status &= ~0b10000000;
-        // SET VBL -> PPUSTATUS.7
         oddFrame = !oddFrame;
     }
 
@@ -31,8 +30,8 @@ namespace Nem {
 
     void PPU::setCPU(Nem::CPU* nCPU) { cpu = nCPU; }
 
-    PPU::PPU(Clock* nMasterClock, ROM* rom) : masterClock(nMasterClock) {
-        memory = new PPUMemory(rom);
+    PPU::PPU(Clock* nMasterClock, Mapper* mapper) : masterClock(nMasterClock) {
+        memory = new PPUMemory(mapper);
         registers = new PPURegisters();
     }
 

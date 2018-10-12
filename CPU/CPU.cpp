@@ -9,6 +9,8 @@
 #include <iostream>
 
 namespace Nem {
+    void CPU::waitCycles(long long cycles) { masterClock->cpuReady(cycles); }
+
 #ifdef MARIO_8057
     bool reached8057 = false;
 
@@ -22,7 +24,6 @@ namespace Nem {
     }
     void CPU::processNMI() {
         if (nmi) {
-            std::cout << "BA: " << makeHex(registers->programCounter) << std::endl;
             pushAddress(registers->programCounter);
             pushByte(registers->status);
             registers->programCounter = memory->getNMIVector();
@@ -30,9 +31,7 @@ namespace Nem {
 #ifdef MARIO_8057
             if (!reached8057) std::cout << "DID NOT REACH 8057!" << std::endl;
 #endif
-#ifdef RESET_NMI
             nmi = false;
-#endif
         }
     }
 
@@ -64,33 +63,26 @@ namespace Nem {
     Address stackLocation = 0x0100;
 
     void CPU::pushByte(Byte byte) {
-        memory->lockStack = false;
         memory->setByte(stackLocation + registers->stackPointer, byte);
         registers->stackPointer--;
-        memory->lockStack = true;
     }
     void CPU::pushAddress(Address address) {
-        memory->lockStack = false;
         memory->setAddress(stackLocation + registers->stackPointer - (Address)1, address);
         registers->stackPointer -= 2;
-        memory->lockStack = true;
     }
     Byte CPU::popByte() {
-        memory->lockStack = false;
         registers->stackPointer++;
         Byte byte = memory->getByte(stackLocation + registers->stackPointer);
-        memory->lockStack = true;
         return byte;
     }
     Address CPU::popAddress() {
-        memory->lockStack = false;
         registers->stackPointer += 2;
         Address address = memory->getAddress(stackLocation + registers->stackPointer - (Address)1);
-        memory->lockStack = true;
         return address;
     }
 
     void CPU::setPPU(PPU* nPPU) { memory->setPPU(nPPU); }
+    void CPU::setController(int index, ControllerInterface* controller) { memory->setController(index, controller); }
 
     void CPU::step() {
         Address index = ++registers->programCounter;
@@ -124,10 +116,13 @@ namespace Nem {
     }
     void CPU::stopExec() {
         stopExecution = true;
+#ifdef PRINT_INSTRUCTIONS
+        outFile.close();
+#endif
     }
 
-    CPU::CPU(Clock* nMasterClock, ROM* rom) : masterClock(nMasterClock) {
-        memory = new CPUMemory(rom);
+    CPU::CPU(Clock* nMasterClock, Mapper* mapper) : masterClock(nMasterClock) {
+        memory = new CPUMemory(this, mapper);
         registers = new CPURegisters();
 
 #ifdef FORCE_ENTRY
@@ -143,7 +138,7 @@ namespace Nem {
         delete registers;
 
 #ifdef PRINT_INSTRUCTIONS
-      outFile.close();
+        outFile.close();
 #endif
     }
 }

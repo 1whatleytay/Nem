@@ -3,22 +3,69 @@
 //
 
 #include "../Emulator.h"
-#include "../Internal.h"
+#include "../Mapper/Mapper.h"
 #include "../Errors.h"
 
 #include "ROM.h"
 
 #include <fstream>
+#include <sstream>
 
 namespace Nem {
     Byte headerVerify[4] = { 0x4E, 0x45, 0x53, 0x1A };
 
-    ROMHeader::Mirroring ROMHeader::getMirroring() {
-        return (flag6 & 0b00000001) == 0b00000001 ? Vertical : Horizontal;
-    }
-    bool ROMHeader::verify() { return memcmp(check, headerVerify, 4) == 0; }
+    vector<Byte> loadRomData(string pathToRom) {
+        std::ifstream stream(pathToRom, std::ios::binary | std::ios::in | std::ios::ate);
+        if (!stream.good()) throw RomNotFoundException(pathToRom);
+        vector<Byte> romData((unsigned long)stream.tellg());
+        stream.seekg(0, std::ios::beg);
+        stream.read((char*)&romData[0], romData.size());
+        stream.close();
 
-    ROMHeader::ROMHeader(vector<Byte>& romData) {
+        return romData;
+    }
+
+    string getVersionName(ROM::Version version) {
+        switch (version) {
+            case ROM::Version::NES2: return "NES 2.0";
+            case ROM::Version::iNES: return "iNES";
+            case ROM::Version::Archaic: return "Archaic NES";
+        }
+    }
+
+    string getMirroringName(ROMHeader::Mirroring mirroring) {
+        switch (mirroring) {
+            case ROMHeader::Mirroring::Vertical: return "Vertical";
+            case ROMHeader::Mirroring::Horizontal: return "Horizontal";
+        }
+    }
+
+    Byte ROMHeader::getMapper() const {
+        return (flag6 & Flag6LowMapper) >> 4;
+    }
+
+    ROMHeader::Mirroring ROMHeader::getMirroring() const {
+        return (flag6 & Flag6Mirroring) == Flag6Mirroring ? Vertical : Horizontal;
+    }
+
+    bool ROMHeader::hasTrainer() const {
+        return (flag6 & Flag6Trainer) == Flag6Trainer;
+    }
+
+    bool ROMHeader::hasCHRRAM() const {
+        return chrRomSize == 0;
+    }
+
+    bool ROMHeader::zeroIsZero() const {
+        for (int a = 0; a < 5; a++) if (zero[a] != 0) return false;
+        return true;
+    }
+
+    bool ROMHeader::verify() const {
+        return memcmp(check, headerVerify, 4) == 0;
+    }
+
+    ROMHeader::ROMHeader(const vector<Byte>& romData) {
         if (romData.size() < 16) throw RomInvalidException("too small.");
         memcpy(check, &romData[0], 4);
         prgRomSize = (unsigned)romData[4] * kilobyte(16);
@@ -37,18 +84,39 @@ namespace Nem {
         if (!verify()) throw RomInvalidException("not an NES rom.");
     }
 
-    ROM::ROM(string& pathToRom) {
-        std::ifstream stream(pathToRom, std::ios::binary | std::ios::in | std::ios::ate);
-        if (!stream.good()) throw RomNotFoundException(pathToRom);
-        vector<Byte> romData((unsigned long)stream.tellg());
-        stream.seekg(0, std::ios::beg);
-        stream.read((char*)&romData[0], romData.size());
-        stream.close();
-
-        header = ROMHeader(romData);
-        prgROM = vector<Byte>(header.prgRomSize);
-        chrROM = vector<Byte>(header.chrRomSize);
-        memcpy(&prgROM[0], &romData[16], header.prgRomSize);
-        memcpy(&chrROM[0], &romData[16 + header.prgRomSize], header.chrRomSize);
+    ROM::Version ROM::getVersion() const {
+        if (header.flag7 == 0x08 && header.zero[1] == 0x08 &&
+            header.prgRomSize8K * kilobyte(8) <= prgROM.size()) return Version::NES2;
+        if (header.flag7 != 0x00 && header.zeroIsZero()) return Version::iNES;
+        return Version::Archaic;
     }
+
+    string ROM::getRomName() const {
+        unsigned long lastIndexFront = romPath.find_last_of('/'), lastIndexBack = romPath.find_last_of('\\');
+        if (lastIndexFront == string::npos) lastIndexFront = 0;
+        else lastIndexFront++;
+        if (lastIndexBack == string::npos) lastIndexBack = 0;
+        else lastIndexBack++;
+        unsigned long lastIndex = std::max(lastIndexFront, lastIndexBack);
+        return romPath.substr(lastIndex, romPath.length() - lastIndex);
+    }
+
+    string ROM::getRomInfo() const {
+        std::stringstream stream;
+        stream << getRomName() << " (" << getVersionName(getVersion()) << ") -"
+        << " Mapper: (" << mapperNames[header.getMapper()] << " : " << (int)header.getMapper() << ")"
+        << " Mirroring: (" << getMirroringName(header.getMirroring()) << ")"
+        << " Trainer: (" << (header.hasTrainer() ? "true" : "false") << ")"
+        << " CHR RAM: (" << (header.hasCHRRAM() ? "true" : "false") << ")";
+        return stream.str();
+    }
+
+    ROM::ROM(string pathToRom) : romPath(pathToRom),
+        romData(loadRomData(pathToRom)),
+        header(romData),
+        prgROM(&romData[0] + 16,
+                &romData[0] + 16 + header.prgRomSize),
+        chrROM(&romData[0] + 16 + header.prgRomSize,
+                &romData[0] + 16 + header.prgRomSize + header.chrRomSize)
+        { }
 }

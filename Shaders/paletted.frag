@@ -20,6 +20,8 @@ uint getPaletteColor(PPUPalette palette, uint index) {
         return palette.colorB;
     case 3:
         return palette.colorC;
+    default:
+        return uint(0x41);
     }
     return uint(0x41);
 }

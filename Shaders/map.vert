@@ -19,6 +19,8 @@ uniform usampler1D nameTable;
 
 uniform int nameTableDrawIndex;
 uniform int patternTableDrawIndex;
+uniform int scrollX, scrollY;
+
 flat out int paletteId;
 out vec2 spriteCoord;
 flat out ivec2 patternCoord;
@@ -31,12 +33,12 @@ void main() {
 
     vec2 vertex = vertexTypes[vertexType];
 
-    int patternRef = int(texelFetch(nameTable, 1024 + shapeId, 0).r);
+    int patternRef = int(texelFetch(nameTable, shapeId + 1024 * nameTableDrawIndex, 0).r);
 
     spriteCoord = vertex;
     patternCoord = ivec2(0, patternRef * 8 + 256 * 8 * patternTableDrawIndex);
 
-    uint attributeFetch = texelFetch(nameTable, 1024 + 960 + tilePosX / 4 + tilePosY / 4 * 8, 0).r;
+    uint attributeFetch = texelFetch(nameTable, 960 + tilePosX / 4 + tilePosY / 4 * 8 + 1024 * nameTableDrawIndex, 0).r;
     attributeFetch = attributeFetch >> (4 * (tilePosY / 2 % 2)) + (2 * (tilePosX / 2 % 2));
     paletteId = int(attributeFetch & uint(0x03));
 

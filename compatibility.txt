@@ -1,0 +1,6 @@
+=============== COMPATIBILITY ===============
+ROM NAME - QUALITY - REQUIRED SETTINGS
+
+color_test.nes - GOOD - !FORCE_ENTRY
+nestest.nes - PASS - FORCE_ENTRY(0xc000)
+SuperMario.nes - SHOWS

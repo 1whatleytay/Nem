@@ -19,6 +19,10 @@ namespace Nem {
         return stream.str();
     }
 
+    string makeBin(int bin) {
+        return std::bitset<32>(bin).to_string();
+    }
+
     Address putByte(bool hi, Address address, Byte write) {
         if (hi) return (address & (Address)0x00ff) | (Address)write << 8;
         else return (address & (Address)0xff00) | (Address)write;

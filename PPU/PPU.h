@@ -10,6 +10,7 @@
 
 namespace Nem {
     class CPU;
+    class Mapper;
     class Clock;
 
     struct PPUPalette { Byte colorA, colorB, colorC; };
@@ -18,9 +19,11 @@ namespace Nem {
         Byte clearColor;
         PPUPalette background[4];
         PPUPalette sprite[4];
+        Byte extra[3];
     };
 
     typedef Byte PPUNameTable[1024];
+    typedef Byte PPUOAM[64 * 4];
 
     enum PPUMemoryRegion {
         PatternTable0 = 0x0000,
@@ -37,25 +40,25 @@ namespace Nem {
         bool patternTable = false;
         bool nameTable = false;
         bool paletteRam = false;
+        bool oam = false;
 
         void addEdit(PPUMemoryRegion region);
         void reset();
     };
 
     class PPUMemory {
+        Mapper* mapper;
+
         ROMHeader::Mirroring mirroring;
 
-        // 0: top left, 1: top right, 2: bottom left, 3: bottom right
         PPUNameTable nameTables[2];
-
-        ROM* rom = nullptr;
     public:
+        PPUOAM oam;
+        PPUPaletteMemory palettes;
         PPUMemoryEdits edits;
 
         int getNameTableIndex(int index);
         int getNameTableByIndex(int nameTable);
-
-        PPUPaletteMemory palettes;
 
         struct MappedAddress {
             PPUMemoryRegion region;
@@ -69,7 +72,7 @@ namespace Nem {
         void setByte(Address address, Byte value);
         void setAddress(Address address, Address value);
 
-        explicit PPUMemory(ROM* nRom);
+        explicit PPUMemory(Mapper* nMapper);
     };
 
     class PPURegisters {
@@ -95,11 +98,13 @@ namespace Nem {
             EmpBlue     = 0b10000000,
         };
 
+        bool flipSpriteZero = false;
+
         Byte control = 0b00000000;
         Byte mask    = 0b00000000;
         Byte status  = 0b10100000;
 
-        Byte oamAddress = 0x00, oamData = 0x00;
+        Byte oamAddress = 0x00;
 
         bool scrollWrite = true;
         Address scroll = 0x0000;
@@ -127,14 +132,14 @@ namespace Nem {
 
         void setCPU(Nem::CPU* nCPU);
 
-        PPU(Clock* nMasterClock, ROM* nROM);
+        PPU(Clock* nMasterClock, Mapper* mapper);
         ~PPU();
     };
 
     struct Color { float red, green, blue; };
 
     // 2C02 Palette
-    extern Color palette2C02[];
+    extern Color palette2C02[0x40];
 }
 
 #endif //NEM_PPU_H

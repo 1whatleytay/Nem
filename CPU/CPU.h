@@ -12,32 +12,37 @@
 #endif
 
 namespace Nem {
-    class ROM;
+    class CPU;
     class PPU;
+    class Mapper;
     class Clock;
+    class ControllerInterface;
 
     enum CPUMemoryRegion {
         WorkRam      = 0x0000,
-        PPUIO = 0x2000,
-        APUIO  = 0x4000,
-        SRAM         = 0x4020,
+        PPUIO        = 0x2000,
+        APUIO        = 0x4000,
+        Debug        = 0x4020,
+        SRAM         = 0x6000,
         PRGRom       = 0x8000,
     };
 
     class CPUMemory {
+        CPU* cpu = nullptr;
         PPU* ppu = nullptr;
-        ROM* rom = nullptr;
+        Mapper* mapper = nullptr;
 
-        vector<Byte> workRam = vector<Byte>(kilobyte(2));
+        vector<Byte> workRam = vector<Byte>(0x800);
+
+        ControllerInterface* controllers[2] = { nullptr, nullptr };
     public:
         struct MappedAddress {
             CPUMemoryRegion region;
             Address effectiveAddress;
         };
 
-        bool lockStack = true;
-
         void setPPU(PPU* nPPU);
+        void setController(int index, ControllerInterface* controller);
 
         void list(Address start, Address count);
 
@@ -52,7 +57,7 @@ namespace Nem {
         Address getResetVector();
         Address getIRQVector();
 
-        explicit CPUMemory(ROM* nRom);
+        CPUMemory(CPU* nCpu, Mapper* nMapper);
     };
 
     class CPURegisters {
@@ -99,6 +104,8 @@ namespace Nem {
         Byte nextByte(Address next = 1);
         Address nextAddress(Address next = 1);
 
+        void waitCycles(long long cycles);
+
         bool isFlagSet(CPURegisters::StatusFlags flags);
         void clearFlags(CPURegisters::StatusFlags flags);
         void setFlags(CPURegisters::StatusFlags flags);
@@ -110,12 +117,13 @@ namespace Nem {
         Address popAddress();
 
         void setPPU(PPU* nPPU);
+        void setController(int index, ControllerInterface* controller);
 
         void step();
         void exec();
         void stopExec();
 
-        CPU(Clock* nMasterClock, ROM* nROM);
+        CPU(Clock* nMasterClock, Mapper* mapper);
         ~CPU();
     };
 }

@@ -20,15 +20,9 @@
  */
 
 /**
- * [FAIL] Fix PPUADDR and PPUDATA (working writes, PPUADDR increments by the right amount)
- * [FAIL] Make and load shaders.
- * [FAIL] Create background drawing.
- * [FAIL] Create OAM space.
- * [FAIL] Implement OAM registers.
- * [FAIL] Create Sprite drawing.
- * [FAIL] Different PPU Cycles are accounted.
- * [FAIL] CPU timing is good (nestest.nes cyc compliance).
- * [PASS] NMI for PPU.
+ * - Set VBL Flag Correctly
+ * - Implement Grayscale
+ * - Implement Emphasis
  */
 
 namespace Nem {
@@ -36,14 +30,20 @@ namespace Nem {
     class CPU;
     class PPU;
     class Clock;
+    class Mapper;
+    class ControllerInterface;
 
     class Emulator {
     public:
         ROM* rom = nullptr;
+        Mapper* mapper = nullptr;
+
+        Clock* masterClock = nullptr;
+
         CPU* cpu = nullptr;
         PPU* ppu = nullptr;
 
-        Clock* masterClock = nullptr;
+        void setController(int index, ControllerInterface* controller);
 
         explicit Emulator(string pathToRom);
         ~Emulator();
