@@ -7,6 +7,10 @@
 
 #include "../Internal.h"
 
+//#ifdef PROFILE_CPU
+//#include "../Debug/Profiler.h"
+//#endif
+
 #ifdef PRINT_INSTRUCTIONS
 #include <fstream>
 #endif
@@ -14,6 +18,7 @@
 namespace Nem {
     class CPU;
     class PPU;
+    class APU;
     class Mapper;
     class Clock;
     class ControllerInterface;
@@ -21,7 +26,7 @@ namespace Nem {
     enum CPUMemoryRegion {
         WorkRam      = 0x0000,
         PPUIO        = 0x2000,
-        APUIO        = 0x4000,
+        GeneralIO    = 0x4000,
         Debug        = 0x4020,
         SRAM         = 0x6000,
         PRGRom       = 0x8000,
@@ -30,9 +35,10 @@ namespace Nem {
     class CPUMemory {
         CPU* cpu = nullptr;
         PPU* ppu = nullptr;
+        APU* apu = nullptr;
         Mapper* mapper = nullptr;
 
-        vector<Byte> workRam = vector<Byte>(0x800);
+        Byte workRam[0x800];
 
         ControllerInterface* controllers[2] = { nullptr, nullptr };
     public:
@@ -42,6 +48,7 @@ namespace Nem {
         };
 
         void setPPU(PPU* nPPU);
+        void setAPU(APU* nAPU);
         void setController(int index, ControllerInterface* controller);
 
         void list(Address start, Address count);
@@ -84,11 +91,17 @@ namespace Nem {
 
         volatile bool stopExecution = false;
 
+        bool irq = false, nmi = false;
+
         void processIRQ();
         void processNMI();
+
+//#ifdef PROFILE_CPU
+//        friend void Profiler::analyzeStep();
+//#endif
+
     public:
         long long cycles = 0;
-        bool irq = false, nmi = false;
 
         CPUMemory* memory = nullptr;
         CPURegisters* registers = nullptr;
@@ -97,9 +110,12 @@ namespace Nem {
         std::ofstream outFile = std::ofstream("/Users/desgroup/Desktop/nem.log.txt");
 #endif
 
-#ifdef MARIO_8057
-        void wait8057();
-#endif
+//#ifdef PROFILE_CPU
+//        Profiler profiler = Profiler(this);
+//#endif
+
+        void postIRQ();
+        void postNMI();
 
         Byte nextByte(Address next = 1);
         Address nextAddress(Address next = 1);
@@ -117,6 +133,7 @@ namespace Nem {
         Address popAddress();
 
         void setPPU(PPU* nPPU);
+        void setAPU(APU* nAPU);
         void setController(int index, ControllerInterface* controller);
 
         void step();

@@ -5,7 +5,6 @@
 #ifndef NEM_PPU_H
 #define NEM_PPU_H
 
-#include "../Internal.h"
 #include "../ROM/ROM.h"
 
 namespace Nem {
@@ -41,6 +40,7 @@ namespace Nem {
         bool nameTable = false;
         bool paletteRam = false;
         bool oam = false;
+        bool registers = false;
 
         void addEdit(PPUMemoryRegion region);
         void reset();
@@ -48,8 +48,6 @@ namespace Nem {
 
     class PPUMemory {
         Mapper* mapper;
-
-        ROMHeader::Mirroring mirroring;
 
         PPUNameTable nameTables[2];
     public:
@@ -71,6 +69,8 @@ namespace Nem {
         Address getAddress(Address address);
         void setByte(Address address, Byte value);
         void setAddress(Address address, Address value);
+
+        bool checkNeedsRefresh();
 
         explicit PPUMemory(Mapper* nMapper);
     };
@@ -98,6 +98,13 @@ namespace Nem {
             EmpBlue     = 0b10000000,
         };
 
+        enum StatusFlags {
+            LSBRegister = 0b00011111,
+            SprOverflow = 0b00100000,
+            SprZeroHit  = 0b01000000,
+            VBlankStart = 0b10000000,
+        };
+
         bool flipSpriteZero = false;
 
         Byte control = 0b00000000;
@@ -107,7 +114,7 @@ namespace Nem {
         Byte oamAddress = 0x00;
 
         bool scrollWrite = true;
-        Address scroll = 0x0000;
+        Byte scrollX = 0, scrollY = 0;
 
         bool addressWrite = true;
         Address address = 0x0000;
@@ -118,14 +125,17 @@ namespace Nem {
 
         CPU* cpu;
 
+//        volatile bool stopExecution = false;
+//        volatile bool isRendering = false;
     public:
         PPUMemory* memory;
         PPURegisters* registers;
 
         bool oddFrame = false;
 
-        void nextFrame();
-        void waitUntilNextFrame();
+        void waitCycles(long long cycles);
+
+        void postNMI();
 
         bool isControlSet(PPURegisters::ControlFlags flags);
         bool isMaskSet(PPURegisters::MaskFlags flags);

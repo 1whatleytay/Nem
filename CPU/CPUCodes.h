@@ -9,9 +9,9 @@
 
 #include <functional>
 
-class CPU;
-
 namespace Nem {
+    class CPU;
+
     typedef std::function<int(CPU*)> Instruction;
 
     int Unimplemented(CPU* cpu);
@@ -52,13 +52,13 @@ namespace Nem {
     int DECInstruction_a(CPU* cpu);
     int DECInstruction_a_x(CPU* cpu);
 
-    int ISCInstruction_d(CPU* cpu);
-    int ISCInstruction_d_x(CPU* cpu);
-    int ISCInstruction_a(CPU* cpu);
-    int ISCInstruction_a_x(CPU* cpu);
-    int ISCInstruction_a_y(CPU* cpu);
-    int ISCInstruction_$x(CPU* cpu);
-    int ISCInstruction_$y(CPU* cpu);
+    int ISBInstruction_d(CPU *cpu);
+    int ISBInstruction_d_x(CPU *cpu);
+    int ISBInstruction_a(CPU *cpu);
+    int ISBInstruction_a_x(CPU *cpu);
+    int ISBInstruction_a_y(CPU *cpu);
+    int ISBInstruction_$x(CPU *cpu);
+    int ISBInstruction_$y(CPU *cpu);
 
     int DCPInstruction_d(CPU* cpu);
     int DCPInstruction_d_x(CPU* cpu);
@@ -125,6 +125,9 @@ namespace Nem {
     int RORInstruction_a(CPU* cpu);
     int RORInstruction_a_x(CPU* cpu);
 
+    int BITInstruction_d(CPU* cpu);
+    int BITInstruction_a(CPU* cpu);
+
     int SLOInstruction_d(CPU* cpu);
     int SLOInstruction_d_x(CPU* cpu);
     int SLOInstruction_a(CPU* cpu);
@@ -157,8 +160,10 @@ namespace Nem {
     int SREInstruction_$x(CPU* cpu);
     int SREInstruction_$y(CPU* cpu);
 
-    int BITInstruction_d(CPU* cpu);
-    int BITInstruction_a(CPU* cpu);
+    int ALRInstruction_i(CPU* cpu);
+    int ANCInstruction_i(CPU* cpu);
+    int ARRInstruction_i(CPU* cpu);
+    int AXSInstruction_i(CPU* cpu);
 
     // Compare
     int CMPInstruction_i(CPU* cpu);
@@ -270,9 +275,6 @@ namespace Nem {
     int PLPInstruction(CPU* cpu);
 
 //    int STPInstruction(CPU* cpu);
-//    int ANCInstruction_i(CPU* cpu);
-//    int ALRInstruction_i(CPU* cpu);
-//    int ARRInstruction_i(CPU* cpu);
 //    int XAAInstruction_i(CPU* cpu);
 //    int AHXInstruction_d_y(CPU* cpu);
 //    int TASInstruction_a_y(CPU* cpu);
@@ -280,7 +282,6 @@ namespace Nem {
 //    int SHXInstruction_a_y(CPU* cpu);
 //    int AHXInstruction_a_y(CPU* cpu);
 //    int LASInstruction_a_y(CPU* cpu);
-//    int AXSInstruction_i(CPU* cpu);
 
     extern Instruction opFunctions[256];
     extern string opNames[256];

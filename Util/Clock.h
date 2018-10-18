@@ -14,6 +14,12 @@ namespace Nem {
         bool cpuReady(long long cycles);
         bool ppuReady(long long cycles);
 
+        void waitUntilCPUReady(long long cycles);
+        void waitUntilPPUReady(long long cycles);
+
+        void startCPU();
+        void startPPU();
+
         Clock();
     };
 

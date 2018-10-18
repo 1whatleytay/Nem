@@ -7,18 +7,8 @@
 #include <iostream>
 
 namespace Nem {
-    Byte NullController::read() {
-#ifdef NULL_CONTROLLER_COMPLAIN
-        std::cout << "Reading from NullController." << std::endl;
-#endif
-        return 0;
-    }
-
-    void NullController::write(Byte data) {
-#ifdef NULL_CONTROLLER_COMPLAIN
-        std::cout << "Writing to NullController <- " << (int)data << "." << std::endl;
-#endif
-    }
+    Byte NullController::read() { return 0; }
+    void NullController::write(Byte) { }
 
     void EditController::press(Byte buttons) {
         backButton |= buttons;
@@ -37,7 +27,7 @@ namespace Nem {
 
         readId++;
 
-        return (frontButton & mask) > 0;
+        return (Byte)((frontButton & mask) > 0);
     }
     void EditController::write(Byte data) {
         strobe = data;

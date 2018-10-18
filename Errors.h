@@ -16,6 +16,13 @@ namespace Nem {
         }
     };
 
+    class CouldNotInitializeAudioException: public std::exception {
+    public:
+        const char* what() const noexcept override {
+            return "Could not initialize audio.";
+        }
+    };
+
     class RomNotFoundException: public std::exception {
         std::string path;
     public:

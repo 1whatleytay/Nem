@@ -33,10 +33,10 @@ namespace Nem {
         }
     }
 
-    string getMirroringName(ROMHeader::Mirroring mirroring) {
+    string getMirroringName(Direction mirroring) {
         switch (mirroring) {
-            case ROMHeader::Mirroring::Vertical: return "Vertical";
-            case ROMHeader::Mirroring::Horizontal: return "Horizontal";
+            case Direction::Vertical: return "Vertical";
+            case Direction::Horizontal: return "Horizontal";
         }
     }
 
@@ -44,7 +44,7 @@ namespace Nem {
         return (flag6 & Flag6LowMapper) >> 4;
     }
 
-    ROMHeader::Mirroring ROMHeader::getMirroring() const {
+    Direction ROMHeader::getMirroring() const {
         return (flag6 & Flag6Mirroring) == Flag6Mirroring ? Vertical : Horizontal;
     }
 
@@ -107,7 +107,8 @@ namespace Nem {
         << " Mapper: (" << mapperNames[header.getMapper()] << " : " << (int)header.getMapper() << ")"
         << " Mirroring: (" << getMirroringName(header.getMirroring()) << ")"
         << " Trainer: (" << (header.hasTrainer() ? "true" : "false") << ")"
-        << " CHR RAM: (" << (header.hasCHRRAM() ? "true" : "false") << ")";
+        << " CHR " << (header.hasCHRRAM() ? "RAM" : "ROM")
+        << ": (" << (header.hasCHRRAM() ? "8192" : std::to_string(header.chrRomSize)) << ")";
         return stream.str();
     }
 

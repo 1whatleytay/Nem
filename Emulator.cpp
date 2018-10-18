@@ -6,8 +6,9 @@
 
 #include "CPU/CPU.h"
 #include "PPU/PPU.h"
+#include "APU/APU.h"
 #include "Mapper/Mapper.h"
-#include "Clock/Clock.h"
+#include "Util/Clock.h"
 
 namespace Nem {
     void Emulator::setController(int index, ControllerInterface* controller) {
@@ -26,8 +27,10 @@ namespace Nem {
 
         cpu = new CPU(masterClock, mapper);
         ppu = new PPU(masterClock, mapper);
+        apu = new APU();
 
         cpu->setPPU(ppu);
+        cpu->setAPU(apu);
         ppu->setCPU(cpu);
     }
 

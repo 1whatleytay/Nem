@@ -2,7 +2,7 @@
 // Created by Taylor Whatley on 2018-10-06.
 //
 
-#include "Display.h"
+#include "App.h"
 
 #include "../PPU/PPU.h"
 
@@ -10,6 +10,8 @@
 #include <iostream>
 
 namespace Nem {
+    const int spriteCount = 0x2000 / 16;
+
     char* loadSource(string path, int* length) {
         std::ifstream stream(path, std::ios::in | std::ios::ate);
         if (!stream.good()) throw Nem::ShaderNotFoundException(path);
@@ -50,6 +52,22 @@ namespace Nem {
         return true;
     }
 
+    Color makeGrayscale(Color color) {
+        float baseColor = color.red * 0.299f + color.green * 0.587f + color.green * 0.113f;
+        return { baseColor, baseColor, baseColor };
+    }
+
+    void loadPPUPalette(GLuint program, Nem::PPUPalette palette, string location) {
+        GLint colorA = glGetUniformLocation(program, (location + ".colorA").c_str());
+        GLint colorB = glGetUniformLocation(program, (location + ".colorB").c_str());
+        GLint colorC = glGetUniformLocation(program, (location + ".colorC").c_str());
+
+        glUseProgram(program);
+        glUniform1ui(colorA, (GLuint)palette.colorA);
+        glUniform1ui(colorB, (GLuint)palette.colorB);
+        glUniform1ui(colorC, (GLuint)palette.colorC);
+    }
+
     vector<GLuint> Display::makePatternData(PPU *ppu) {
         int spriteCount = 0x2000 / 16;
         vector<GLuint> data = vector<GLuint>((unsigned long)(spriteCount * 8 * 8));
@@ -86,6 +104,56 @@ namespace Nem {
         vector<GLuint> data = vector<GLuint>(64 * 4);
         for (int a = 0; a < 64 * 4; a++) data[a] = ppu->memory->oam[a];
         return data;
+    }
+
+    void Display::refreshPatternTable() {
+        vector<GLuint> patternTableTex = makePatternData(ppu);
+
+        glActiveTexture(GL_TEXTURE0 + 0);
+        glBindTexture(GL_TEXTURE_2D, patternTexture);
+        glTexSubImage2D(GL_TEXTURE_2D,
+                        0, 0, 0, 8, spriteCount * 8,
+                        GL_RED_INTEGER, GL_UNSIGNED_INT, &patternTableTex[0]);
+    }
+    void Display::refreshNameTable() {
+        vector<GLuint> nameTableTex = makeNameTableData(ppu);
+
+        glActiveTexture(GL_TEXTURE0 + 1);
+        glBindTexture(GL_TEXTURE_1D, nameTableTexture);
+        glTexSubImage1D(GL_TEXTURE_1D,
+                        0, 0, kilobyte(2),
+                        GL_RED_INTEGER, GL_UNSIGNED_INT, &nameTableTex[0]);
+    }
+    void Display::refreshPaletteRam() {
+        Color clearColor = palette2C02[ppu->memory->getByte(0x3f00) % 64];
+        if (ppu->isMaskSet(PPURegisters::MaskFlags::Grayscale))
+            clearColor = makeGrayscale(clearColor);
+        glClearColor(clearColor.red, clearColor.green, clearColor.blue, 1);
+
+        loadPPUPalette(backgroundProgram, ppu->memory->palettes.background[0], "palettes[0]");
+        loadPPUPalette(backgroundProgram, ppu->memory->palettes.background[1], "palettes[1]");
+        loadPPUPalette(backgroundProgram, ppu->memory->palettes.background[2], "palettes[2]");
+        loadPPUPalette(backgroundProgram, ppu->memory->palettes.background[3], "palettes[3]");
+
+        loadPPUPalette(spriteProgram, ppu->memory->palettes.sprite[0], "palettes[0]");
+        loadPPUPalette(spriteProgram, ppu->memory->palettes.sprite[1], "palettes[1]");
+        loadPPUPalette(spriteProgram, ppu->memory->palettes.sprite[2], "palettes[2]");
+        loadPPUPalette(spriteProgram, ppu->memory->palettes.sprite[3], "palettes[3]");
+    }
+
+    void Display::refreshOAM() {
+        vector<GLuint> oamTex = makeOAMData(ppu);
+
+        glActiveTexture(GL_TEXTURE0 + 3);
+        glBindTexture(GL_TEXTURE_1D, oamTexture);
+        glTexSubImage1D(GL_TEXTURE_1D,
+                        0, 0, 64 * 4,
+                        GL_RED_INTEGER, GL_UNSIGNED_INT, &oamTex[0]);
+    }
+
+    void Display::refreshRegisters() {
+        glUniform1i(uniformBkgGrayscale, ppu->isMaskSet(PPURegisters::MaskFlags::Grayscale));
+        glUniform1i(uniformSprGrayscale, ppu->isMaskSet(PPURegisters::MaskFlags::Grayscale));
     }
 
     bool Display::loadShaders() {
@@ -150,6 +218,7 @@ namespace Nem {
         uniformBkgPatternTableDrawIndex = glGetUniformLocation(backgroundProgram, "patternTableDrawIndex");
         uniformBkgScrollX = glGetUniformLocation(backgroundProgram, "scrollX");
         uniformBkgScrollY = glGetUniformLocation(backgroundProgram, "scrollY");
+        uniformBkgGrayscale = glGetUniformLocation(backgroundProgram, "grayscale");
 
         glUniform1i(uniformBkgPatternSampler, 0);
         glUniform1i(uniformBkgNameTableSampler, 1);
@@ -163,6 +232,7 @@ namespace Nem {
         uniformSprPaletteSampler = glGetUniformLocation(spriteProgram, "palette");
         uniformSprOAMSampler = glGetUniformLocation(spriteProgram, "oam");
         uniformSprPatternTableDrawIndex = glGetUniformLocation(spriteProgram, "patternTableDrawIndex");
+        uniformSprGrayscale = glGetUniformLocation(backgroundProgram, "grayscale");
 
         glUniform1i(uniformSprPatternSampler, 0);
         glUniform1i(uniformSprPaletteSampler, 2);

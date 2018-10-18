@@ -38,6 +38,16 @@ namespace Nem {
         return false;
     }
 
+    void Clock::waitUntilCPUReady(long long cycles) {
+        while (!cpuReady(cycles)) { }
+    }
+    void Clock::waitUntilPPUReady(long long cycles) {
+        while (!ppuReady(cycles)) { }
+    }
+
+    void Clock::startCPU() { cpuLastTime = hertz(currentTime()); }
+    void Clock::startPPU() { ppuLastTime = hertz(currentTime()); }
+
     Clock::Clock() : cpuLastTime(hertz(currentTime())), ppuLastTime(hertz(currentTime())) { }
 
     bool Stopwatch::hasBeen(long long milliseconds) {

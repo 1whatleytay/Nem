@@ -47,8 +47,8 @@ namespace Nem {
     }
 
     int PPUMemory::getNameTableIndex(int index) {
-        switch (mirroring) {
-            case ROMHeader::Mirroring::Vertical:
+        switch (mapper->getMirroring()) {
+            case Direction::Vertical:
                 switch (index) {
                     case 0: return 0;
                     case 1: return 1;
@@ -56,7 +56,7 @@ namespace Nem {
                     case 3: return 1;
                     default: return 0;
                 }
-            case ROMHeader::Mirroring::Horizontal:
+            case Direction::Horizontal:
                 switch (index) {
                     case 0: return 0;
                     case 1: return 0;
@@ -69,14 +69,14 @@ namespace Nem {
     }
 
     int PPUMemory::getNameTableByIndex(int nameTable) {
-        switch (mirroring) {
-            case ROMHeader::Mirroring::Vertical:
+        switch (mapper->getMirroring()) {
+            case Direction::Vertical:
                 switch (nameTable) {
                     case 0: return 0;
                     case 1: return 1;
                     default: return 0;
                 }
-            case ROMHeader::Mirroring::Horizontal:
+            case Direction::Horizontal:
                 switch (nameTable) {
                     case 0: return 0;
                     case 1: return 1;
@@ -244,15 +244,15 @@ namespace Nem {
         setByte(address + (Address)1, hiByte);
     }
 
-    PPUMemory::PPUMemory(Mapper* nMapper) : mapper(nMapper) {
-//        std::memset(patternTables[0], 0, 0x1000);
-//        std::memset(patternTables[1], 0, 0x1000);
-//
-//        std::memcpy(patternTables[0], &rom->chrROM[0], rom->chrROM.size() / 2);
-//        std::memcpy(patternTables[1], &rom->chrROM[0x1000], rom->chrROM.size() / 2);
-
-        mirroring = mapper->getHeader()->getMirroring();
+    bool PPUMemory::checkNeedsRefresh() {
+        if (mapper->ppuNeedsRefresh) {
+            mapper->ppuNeedsRefresh = false;
+            return true;
+        }
+        return false;
     }
+
+    PPUMemory::PPUMemory(Mapper* nMapper) : mapper(nMapper) { }
 
     void PPUMemoryEdits::addEdit(PPUMemoryRegion region) {
         switch (region) {

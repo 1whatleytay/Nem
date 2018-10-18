@@ -18,10 +18,13 @@ namespace Nem {
 
         vector<Byte> chrRAM;
 
-        int getBankReference(Address index);
+        int getBankReference(Address address);
     public:
+        bool ppuNeedsRefresh = false;
+
         string getName();
-        const ROMHeader* getHeader();
+
+        virtual Direction getMirroring();
 
         virtual Byte getRAMByte(Address index) = 0;
         virtual void setRAMByte(Address index, Byte value) = 0;

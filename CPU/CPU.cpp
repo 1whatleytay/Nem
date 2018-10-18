@@ -3,21 +3,19 @@
 //
 
 #include "CPU.h"
-#include "../Clock/Clock.h"
-#include "Codes.h"
+#include "../Util/Clock.h"
+#include "CPUCodes.h"
 
 #include <iostream>
 
 namespace Nem {
-    void CPU::waitCycles(long long cycles) { masterClock->cpuReady(cycles); }
+    CPU* debugCPU = nullptr;
 
-#ifdef MARIO_8057
-    bool reached8057 = false;
-
-    void CPU::wait8057() {
-        while(!reached8057) { }
+    Address getDebugPC() {
+        return debugCPU->registers->programCounter;
     }
-#endif
+
+    void CPU::waitCycles(long long cycles) { masterClock->waitUntilCPUReady(cycles); }
 
     void CPU::processIRQ() {
 
@@ -28,12 +26,14 @@ namespace Nem {
             pushByte(registers->status);
             registers->programCounter = memory->getNMIVector();
             registers->programCounter--;
-#ifdef MARIO_8057
-            if (!reached8057) std::cout << "DID NOT REACH 8057!" << std::endl;
-#endif
+#ifdef NMI_RESET
             nmi = false;
+#endif
         }
     }
+
+    void CPU::postIRQ() { irq = true; }
+    void CPU::postNMI() { nmi = true; }
 
     Byte CPU::nextByte(Address next) {
         return memory->getByte(registers->programCounter + next);
@@ -82,14 +82,16 @@ namespace Nem {
     }
 
     void CPU::setPPU(PPU* nPPU) { memory->setPPU(nPPU); }
+    void CPU::setAPU(APU *nAPU) { memory->setAPU(nAPU); }
     void CPU::setController(int index, ControllerInterface* controller) { memory->setController(index, controller); }
 
     void CPU::step() {
+//#ifdef PROFILE_CPU
+//        profiler.analyzeStep();
+//#endif
+
         Address index = ++registers->programCounter;
 
-#ifdef MARIO_8057
-        reached8057 = true;
-#endif
         Byte instructionId = memory->getByte(index);
         Instruction instruction = opFunctions[instructionId];
 
@@ -103,7 +105,7 @@ namespace Nem {
         int length = instruction(this);
         cycles += 2; // Every instruction usually takes at least 2 cycles.
 
-        while (!masterClock->cpuReady(cycles - cyclesBefore)) { }
+        masterClock->waitUntilCPUReady(cycles - cyclesBefore);
 
         registers->programCounter += length;
 
@@ -112,6 +114,7 @@ namespace Nem {
     }
 
     void CPU::exec() {
+        masterClock->startCPU();
         while (!stopExecution) { step(); }
     }
     void CPU::stopExec() {
@@ -131,6 +134,8 @@ namespace Nem {
         registers->programCounter = memory->getResetVector();
 #endif
         registers->programCounter--;
+
+        debugCPU = this;
     }
 
     CPU::~CPU() {

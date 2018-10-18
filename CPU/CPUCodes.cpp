@@ -2,13 +2,192 @@
 // Created by Taylor Whatley on 2018-09-19.
 //
 
-#include "CPU.h"
-#include "Operations.h"
-#include "Codes.h"
+#include "CPUCodes.h"
 
+#include "CPU.h"
+
+#include <functional>
 #include <iostream>
 
 namespace Nem {
+    bool isNegative(Byte value) {
+        return (value & 0b10000000) == 0b10000000;
+    }
+
+    bool skippedPage(Address pointer, short offset) {
+        return pointer / 256 < (pointer + offset) / 256;
+    }
+
+    bool skippedPage(Address pointer, Byte offset) {
+        return skippedPage(pointer, (short) offset);
+    }
+
+    void checkZero(CPU *cpu, Byte value) {
+        cpu->setFlags(value == 0, CPURegisters::StatusFlags::Zero);
+    }
+
+    void checkNegative(CPU *cpu, Byte value) {
+        cpu->setFlags(isNegative(value), CPURegisters::StatusFlags::Negative);
+    }
+
+    void checkLow(CPU *cpu, Byte value) {
+        checkZero(cpu, value);
+        checkNegative(cpu, value);
+    }
+
+    void checkLow(CPU *cpu) {
+        checkLow(cpu, cpu->registers->accumulator);
+    }
+
+    Address onPage(Address offset, Byte page = 0) {
+        return (Address)(offset % 0x100 + page * 0x100);
+    }
+
+    Byte getByteOnPage(CPU *cpu, Address offset, Byte page = 0) {
+        return cpu->memory->getByte(onPage(offset, page));
+    }
+
+    Address getAddressOnPage(CPU *cpu, Address offset, Byte page = 0) {
+        Byte a = cpu->memory->getByte(onPage(offset, page));
+        Byte b = cpu->memory->getByte(onPage(offset + (Address) 1, page));
+        return makeAddress(a, b);
+    }
+
+    void CMP(CPU *cpu, Byte reg, Byte value) {
+        cpu->setFlags(reg >= value, CPURegisters::StatusFlags::Carry);
+        bool equal = reg == value;
+        cpu->setFlags(equal, CPURegisters::StatusFlags::Zero);
+        if (equal) cpu->clearFlags(CPURegisters::StatusFlags::Negative);
+        else checkNegative(cpu, reg - value);
+    }
+
+    void ADC(CPU *cpu, Byte value) {
+        bool carry = cpu->isFlagSet(CPURegisters::StatusFlags::Carry);
+        bool test = (int) cpu->registers->accumulator + (int) value + (int) carry > 255;
+        cpu->setFlags(
+                (bool) (
+                        ~(cpu->registers->accumulator ^ value) &
+                        (cpu->registers->accumulator ^ (cpu->registers->accumulator + value + (Byte) carry)) & 0x80),
+                CPURegisters::StatusFlags::Overflow);
+        cpu->registers->accumulator += value + (Byte) cpu->isFlagSet(CPURegisters::StatusFlags::Carry);
+        cpu->setFlags(test, CPURegisters::StatusFlags::Carry);
+        checkLow(cpu);
+    }
+
+    void SBC(CPU *cpu, Byte value) { ADC(cpu, ~value); }
+
+    void INC(CPU *cpu, Address pointer) {
+        cpu->memory->setByte(pointer, cpu->memory->getByte(pointer) + (Byte) 1);
+        checkLow(cpu, cpu->memory->getByte(pointer));
+    }
+
+    void DEC(CPU *cpu, Address pointer) {
+        cpu->memory->setByte(pointer, cpu->memory->getByte(pointer) - (Byte) 1);
+        checkLow(cpu, cpu->memory->getByte(pointer));
+    }
+
+    void AND(CPU *cpu, Byte value) {
+        cpu->registers->accumulator &= value;
+        checkLow(cpu);
+    }
+
+    void ORA(CPU *cpu, Byte value) {
+        cpu->registers->accumulator |= value;
+        checkLow(cpu);
+    }
+
+    void EOR(CPU *cpu, Byte value) {
+        cpu->registers->accumulator ^= value;
+        checkLow(cpu);
+    }
+
+    void BIT(CPU *cpu, Byte value) {
+        cpu->setFlags((cpu->registers->accumulator & value) == 0, CPURegisters::StatusFlags::Zero);
+        cpu->setFlags((value & 0b01000000) > 0, CPURegisters::StatusFlags::Overflow);
+        checkNegative(cpu, value);
+    }
+
+    void JMP(CPU *cpu, Address pointer) {
+        cpu->registers->programCounter = pointer - (Address) 1;
+    }
+
+    void BXS(CPU *cpu, CPURegisters::StatusFlags flags, Byte jump) {
+        if (cpu->isFlagSet(flags)) {
+            short value = makeSigned(jump);
+            if (skippedPage(cpu->registers->programCounter, value)) cpu->cycles += 1;
+            cpu->registers->programCounter += value;
+            cpu->cycles += 1;
+        }
+    }
+
+    void BXC(CPU *cpu, CPURegisters::StatusFlags flags, Byte jump) {
+        if (!cpu->isFlagSet(flags)) {
+            short value = makeSigned(jump);
+            if (skippedPage(cpu->registers->programCounter, value)) cpu->cycles += 1;
+            cpu->registers->programCounter += value;
+            cpu->cycles += 1;
+        }
+    }
+
+    void ASL(CPU *cpu) {
+        cpu->setFlags(((int) cpu->registers->accumulator << 1) > 255, CPURegisters::StatusFlags::Carry);
+        cpu->registers->accumulator = cpu->registers->accumulator << 1;
+        checkLow(cpu);
+    }
+
+    void ASL(CPU *cpu, Address pointer) {
+        Byte value = cpu->memory->getByte(pointer);
+        cpu->setFlags(((int) value << 1) > 255, CPURegisters::StatusFlags::Carry);
+        cpu->memory->setByte(pointer, value << 1);
+        checkLow(cpu, value << 1);
+    }
+
+    void LSR(CPU *cpu) {
+        cpu->setFlags((cpu->registers->accumulator & 0b00000001) == 0b00000001, CPURegisters::StatusFlags::Carry);
+        cpu->registers->accumulator = cpu->registers->accumulator >> 1;
+        checkLow(cpu);
+    }
+
+    void LSR(CPU *cpu, Address pointer) {
+        Byte value = cpu->memory->getByte(pointer);
+        cpu->setFlags((value & 0b00000001) == 0b00000001, CPURegisters::StatusFlags::Carry);
+        cpu->memory->setByte(pointer, value >> 1);
+        checkLow(cpu, value >> 1);
+    }
+
+    void ROL(CPU *cpu) {
+        Byte bit0 = cpu->isFlagSet(CPURegisters::StatusFlags::Carry) ? (Byte) 0b00000001 : (Byte) 0b00000000;
+        cpu->setFlags((cpu->registers->accumulator & 0b10000000) == 0b10000000, CPURegisters::StatusFlags::Carry);
+        cpu->registers->accumulator = cpu->registers->accumulator << 1;
+        cpu->registers->accumulator |= bit0;
+        checkLow(cpu);
+    }
+
+    void ROL(CPU *cpu, Address pointer) {
+        Byte bit0 = cpu->isFlagSet(CPURegisters::StatusFlags::Carry) ? (Byte) 0b00000001 : (Byte) 0b00000000;
+        cpu->setFlags((cpu->memory->getByte(pointer) & 0b10000000) == 0b10000000,
+                      CPURegisters::StatusFlags::Carry);
+        cpu->memory->setByte(pointer, cpu->memory->getByte(pointer) << 1);
+        cpu->memory->setByte(pointer, cpu->memory->getByte(pointer) | bit0);
+        checkLow(cpu, cpu->memory->getByte(pointer));
+    }
+
+    void ROR(CPU *cpu) {
+        Byte bit7 = cpu->isFlagSet(CPURegisters::StatusFlags::Carry) ? (Byte) 0b10000000 : (Byte) 0b00000000;
+        cpu->setFlags((cpu->registers->accumulator & 0b00000001) == 0b00000001, CPURegisters::StatusFlags::Carry);
+        cpu->registers->accumulator = cpu->registers->accumulator >> 1;
+        cpu->registers->accumulator |= bit7;
+        checkLow(cpu);
+    }
+
+    void ROR(CPU *cpu, Address pointer) {
+        Byte bit7 = cpu->isFlagSet(CPURegisters::StatusFlags::Carry) ? (Byte) 0b10000000 : (Byte) 0b00000000;
+        cpu->setFlags((cpu->memory->getByte(pointer) & 0b00000001) == 0b00000001, CPURegisters::StatusFlags::Carry);
+        cpu->memory->setByte(pointer, cpu->memory->getByte(pointer) >> 1);
+        cpu->memory->setByte(pointer, cpu->memory->getByte(pointer) | bit7);
+        checkLow(cpu, cpu->memory->getByte(pointer));
+    }
+
     int Unimplemented(CPU *cpu) {
         std::cout << "Instruction not implemented. PC: $" << makeHex(cpu->registers->programCounter)
                   << " INST: $" << makeHex(cpu->memory->getByte(cpu->registers->programCounter)) << std::endl;
@@ -18,8 +197,8 @@ namespace Nem {
         return 0;
     }
 
-    int NOPInstruction(CPU *cpu) { return 0; }
-    int NOPInstruction_i(CPU *cpu) { return 1; }
+    int NOPInstruction(CPU*) { return 0; }
+    int NOPInstruction_i(CPU*) { return 1; }
     int NOPInstruction_d(CPU *cpu) { cpu->cycles += 1; return 1; }
     int NOPInstruction_d_x(CPU *cpu) { cpu->cycles += 2; return 1; }
     int NOPInstruction_a(CPU *cpu) { cpu->cycles += 2; return 2; }
@@ -189,7 +368,7 @@ namespace Nem {
     }
 
     int DECInstruction_d_x(CPU *cpu) {
-        Address pointer = (Address) cpu->nextByte() + cpu->registers->indexX;
+        Address pointer = onPage((Address)cpu->nextByte() + cpu->registers->indexX);
         DEC(cpu, pointer);
         cpu->cycles += 4;
         return 1;
@@ -209,7 +388,7 @@ namespace Nem {
         return 2;
     }
 
-    int ISCInstruction_d(CPU *cpu) {
+    int ISBInstruction_d(CPU *cpu) {
         Address pointer = (Address) cpu->nextByte();
         INC(cpu, pointer);
         SBC(cpu, cpu->memory->getByte(pointer));
@@ -217,7 +396,7 @@ namespace Nem {
         return 1;
     }
 
-    int ISCInstruction_d_x(CPU *cpu) {
+    int ISBInstruction_d_x(CPU *cpu) {
         Address pointer = onPage((Address) cpu->nextByte() + cpu->registers->indexX);
         INC(cpu, pointer);
         SBC(cpu, cpu->memory->getByte(pointer));
@@ -225,7 +404,7 @@ namespace Nem {
         return 1;
     }
 
-    int ISCInstruction_a(CPU *cpu) {
+    int ISBInstruction_a(CPU *cpu) {
         Address pointer = (Address) cpu->nextAddress();
         INC(cpu, pointer);
         SBC(cpu, cpu->memory->getByte(pointer));
@@ -233,7 +412,7 @@ namespace Nem {
         return 2;
     }
 
-    int ISCInstruction_a_x(CPU *cpu) {
+    int ISBInstruction_a_x(CPU *cpu) {
         Address pointer = (Address) cpu->nextAddress() + cpu->registers->indexX;
         INC(cpu, pointer);
         SBC(cpu, cpu->memory->getByte(pointer));
@@ -241,7 +420,7 @@ namespace Nem {
         return 2;
     }
 
-    int ISCInstruction_a_y(CPU *cpu) {
+    int ISBInstruction_a_y(CPU *cpu) {
         Address pointer = (Address) cpu->nextAddress() + cpu->registers->indexY;
         INC(cpu, pointer);
         SBC(cpu, cpu->memory->getByte(pointer));
@@ -249,7 +428,7 @@ namespace Nem {
         return 2;
     }
 
-    int ISCInstruction_$x(CPU *cpu) {
+    int ISBInstruction_$x(CPU *cpu) {
         Address pointer = getAddressOnPage(cpu, (Address) cpu->nextAddress() + cpu->registers->indexX);
         INC(cpu, pointer);
         SBC(cpu, cpu->memory->getByte(pointer));
@@ -257,7 +436,7 @@ namespace Nem {
         return 1;
     }
 
-    int ISCInstruction_$y(CPU *cpu) {
+    int ISBInstruction_$y(CPU *cpu) {
         Address pointer = getAddressOnPage(cpu, (Address) cpu->nextAddress()) + cpu->registers->indexY;
         INC(cpu, pointer);
         SBC(cpu, cpu->memory->getByte(pointer));
@@ -667,7 +846,7 @@ namespace Nem {
     }
 
     int ROLInstruction_d_x(CPU *cpu) {
-        Address pointer = (Address) cpu->nextByte() + cpu->registers->indexX;
+        Address pointer = onPage((Address)cpu->nextByte() + cpu->registers->indexX);
         ROL(cpu, pointer);
         cpu->cycles += 4;
         return 1;
@@ -700,7 +879,7 @@ namespace Nem {
     }
 
     int RORInstruction_d_x(CPU *cpu) {
-        Address pointer = (Address) cpu->nextByte() + cpu->registers->indexX;
+        Address pointer = onPage((Address)cpu->nextByte() + cpu->registers->indexX);
         ROR(cpu, pointer);
         cpu->cycles += 4;
         return 1;
@@ -944,6 +1123,34 @@ namespace Nem {
         return 1;
     }
 
+    int ALRInstruction_i(CPU* cpu) {
+        AND(cpu, cpu->nextByte());
+        LSR(cpu);
+        return 1;
+    }
+    int ANCInstruction_i(CPU* cpu) {
+        AND(cpu, cpu->nextByte());
+        cpu->setFlags(cpu->isFlagSet(CPURegisters::StatusFlags::Negative), CPURegisters::StatusFlags::Carry);
+        return 1;
+    }
+    int ARRInstruction_i(CPU* cpu) {
+        AND(cpu, cpu->nextByte());
+        ROR(cpu);
+        bool bit6 = (cpu->registers->accumulator & 0b01000000) == 0b01000000;
+        bool bit5 = (cpu->registers->accumulator & 0b00100000) == 0b00100000;
+        cpu->setFlags(bit6, CPURegisters::StatusFlags::Carry);
+        cpu->setFlags(bit6 ^ bit5, CPURegisters::StatusFlags::Overflow);
+        return 1;
+    }
+    int AXSInstruction_i(CPU* cpu) {
+        cpu->registers->indexX = (cpu->registers->indexX & cpu->registers->accumulator);
+        checkLow(cpu, cpu->registers->indexX);
+        cpu->registers->indexX -= cpu->nextByte();
+        if (cpu->registers->indexX == cpu->nextByte()) cpu->clearFlags(CPURegisters::StatusFlags::Negative);
+        else checkNegative(cpu, cpu->registers->indexX - cpu->nextByte());
+        return 1;
+    }
+
     int CLCInstruction(CPU *cpu) {
         cpu->clearFlags(CPURegisters::StatusFlags::Carry);
         return 0;
@@ -1023,52 +1230,27 @@ namespace Nem {
     }
 
     int BVSInstruction_pd(CPU *cpu) {
-        if (cpu->isFlagSet(CPURegisters::StatusFlags::Overflow)) {
-            short value = makeSigned(cpu->nextByte());
-            if (skippedPage(cpu->registers->programCounter + (Address)2, value)) cpu->cycles += 1;
-            cpu->registers->programCounter += value;
-            cpu->cycles += 1;
-        }
+        BXS(cpu, CPURegisters::StatusFlags::Overflow, cpu->nextByte());
         return 1;
     }
 
     int BCCInstruction_pd(CPU *cpu) {
-        if (!cpu->isFlagSet(CPURegisters::StatusFlags::Carry)) {
-            short value = makeSigned(cpu->nextByte());
-            if (skippedPage(cpu->registers->programCounter + (Address)2, value)) cpu->cycles += 1;
-            cpu->registers->programCounter += value;
-            cpu->cycles += 1;
-        }
+        BXC(cpu, CPURegisters::StatusFlags::Carry, cpu->nextByte());
         return 1;
     }
 
     int BCSInstruction_pd(CPU *cpu) {
-        if (cpu->isFlagSet(CPURegisters::StatusFlags::Carry)) {
-            short value = makeSigned(cpu->nextByte());
-            if (skippedPage(cpu->registers->programCounter + (Address)2, value)) cpu->cycles += 1;
-            cpu->registers->programCounter += value;
-            cpu->cycles += 1;
-        }
+        BXS(cpu, CPURegisters::StatusFlags::Carry, cpu->nextByte());
         return 1;
     }
 
     int BNEInstruction_pd(CPU *cpu) {
-        if (!cpu->isFlagSet(CPURegisters::StatusFlags::Zero)) {
-            short value = makeSigned(cpu->nextByte());
-            if (skippedPage(cpu->registers->programCounter + (Address)2, value)) cpu->cycles += 1;
-            cpu->registers->programCounter += value;
-            cpu->cycles += 1;
-        }
+        BXC(cpu, CPURegisters::StatusFlags::Zero, cpu->nextByte());
         return 1;
     }
 
     int BEQInstruction_pd(CPU *cpu) {
-        if (cpu->isFlagSet(CPURegisters::StatusFlags::Zero)) {
-            short value = makeSigned(cpu->nextByte());
-            if (skippedPage(cpu->registers->programCounter + (Address)2, value)) cpu->cycles += 1;
-            cpu->registers->programCounter += value;
-            cpu->cycles += 1;
-        }
+        BXS(cpu, CPURegisters::StatusFlags::Zero, cpu->nextByte());
         return 1;
     }
 
@@ -1366,9 +1548,6 @@ namespace Nem {
     }
 
     int STAInstruction_a(CPU *cpu) {
-//        if (cpu->nextAddress() == 0x4014) {
-//            std::cout << "OAM WRITE. PC: " << makeHex(cpu->registers->programCounter) << " <- " << (int)cpu->registers->accumulator << std::endl;
-//        }
         cpu->memory->setByte(cpu->nextAddress(), cpu->registers->accumulator);
         cpu->cycles += 2;
         return 2;
@@ -1514,7 +1693,7 @@ namespace Nem {
             PHPInstruction, // OP 0x08
             ORAInstruction_i, // OP 0x09
             ASLInstruction, // OP 0x0A
-            Unimplemented, //ANCInstruction_i, // OP 0x0B
+            ANCInstruction_i, // OP 0x0B
             NOPInstruction_a, // OP 0x0C
             ORAInstruction_a, // OP 0x0D
             ASLInstruction_a, // OP 0x0E
@@ -1546,7 +1725,7 @@ namespace Nem {
             PLPInstruction, // OP 0x28
             ANDInstruction_i, // OP 0x29
             ROLInstruction, // OP 0x2A
-            Unimplemented, //ANCInstruction_i, // OP 0x2B
+            ANCInstruction_i, // OP 0x2B
             BITInstruction_a, // OP 0x2C
             ANDInstruction_a, // OP 0x2D
             ROLInstruction_a, // OP 0x2E
@@ -1578,7 +1757,7 @@ namespace Nem {
             PHAInstruction, // OP 0x48
             EORInstruction_i, // OP 0x49
             LSRInstruction, // OP 0x4A
-            Unimplemented, //ALRInstruction_i, // OP 0x4B
+            ALRInstruction_i, // OP 0x4B
             JMPInstruction_a, // OP 0x4C
             EORInstruction_a, // OP 0x4D
             LSRInstruction_a, // OP 0x4E
@@ -1610,7 +1789,7 @@ namespace Nem {
             PLAInstruction, // OP 0x68
             ADCInstruction_i, // OP 0x69
             RORInstruction, // OP 0x6A
-            Unimplemented, //ARRInstruction_i, // OP 0x6B
+            ARRInstruction_i, // OP 0x6B
             JMPInstruction_$, // OP 0x6C
             ADCInstruction_a, // OP 0x6D
             RORInstruction_a, // OP 0x6E
@@ -1706,7 +1885,7 @@ namespace Nem {
             INYInstruction, // OP 0xC8
             CMPInstruction_i, // OP 0xC9
             DEXInstruction, // OP 0xCA
-            Unimplemented, //AXSInstruction_i, // OP 0xCB
+            AXSInstruction_i, // OP 0xCB
             CPYInstruction_a, // OP 0xCC
             CMPInstruction_a, // OP 0xCD
             DECInstruction_a, // OP 0xCE
@@ -1730,11 +1909,11 @@ namespace Nem {
             CPXInstruction_i, // OP 0xE0
             SBCInstruction_$x, // OP 0xE1
             NOPInstruction_i, // OP 0xE2
-            ISCInstruction_$x, // OP 0xE3
+            ISBInstruction_$x, // OP 0xE3
             CPXInstruction_d, // OP 0xE4
             SBCInstruction_d, // OP 0xE5
             INCInstruction_d, // OP 0xE6
-            ISCInstruction_d, // OP 0xE7
+            ISBInstruction_d, // OP 0xE7
             INXInstruction, // OP 0xE8
             SBCInstruction_i, // OP 0xE9
             NOPInstruction, // OP 0xEA
@@ -1742,23 +1921,23 @@ namespace Nem {
             CPXInstruction_a, // OP 0xEC
             SBCInstruction_a, // OP 0xED
             INCInstruction_a, // OP 0xEE
-            ISCInstruction_a, //ISCInstruction_a, // OP 0xEF
+            ISBInstruction_a, // OP 0xEF
             BEQInstruction_pd, // OP 0xF0
             SBCInstruction_$y, // OP 0xF1
             Unimplemented, //STPInstruction, // OP 0xF2
-            ISCInstruction_$y, // OP 0xF3
+            ISBInstruction_$y, // OP 0xF3
             NOPInstruction_d_x, // OP 0xF4
             SBCInstruction_d_x, // OP 0xF5
             INCInstruction_d_x, // OP 0xF6
-            ISCInstruction_d_x, // OP 0xF7
+            ISBInstruction_d_x, // OP 0xF7
             SEDInstruction, // OP 0xF8
             SBCInstruction_a_y, // OP 0xF9
             NOPInstruction, // OP 0xFA
-            ISCInstruction_a_y, // OP 0xFB
+            ISBInstruction_a_y, // OP 0xFB
             NOPInstruction_a_x, // OP 0xFC
             SBCInstruction_a_x, // OP 0xFD
             INCInstruction_a_x, // OP 0xFE
-            ISCInstruction_a_x, // OP 0xFF
+            ISBInstruction_a_x, // OP 0xFF
     };
 
     string opNames[] = {
@@ -1773,7 +1952,7 @@ namespace Nem {
             "PHP", // NAME 0x08
             "ORA I", // NAME 0x09
             "ASL", // NAME 0x0A
-            "UNI", //ANCInstruction_i, // NAME 0x0B
+            "ANC I", // NAME 0x0B
             "NOP A", // NAME 0x0C
             "ORA A", // NAME 0x0D
             "ASL A", // NAME 0x0E
@@ -1805,7 +1984,7 @@ namespace Nem {
             "PLP", // NAME 0x28
             "AND I", // NAME 0x29
             "ROL", // NAME 0x2A
-            "UNI", //ANCInstruction_i, // NAME 0x2B
+            "ANC I", // NAME 0x2B
             "BIT A", // NAME 0x2C
             "AND A", // NAME 0x2D
             "ROL A", // NAME 0x2E
@@ -1837,7 +2016,7 @@ namespace Nem {
             "PHA", // NAME 0x48
             "EOR I", // NAME 0x49
             "LSR", // NAME 0x4A
-            "UNI", //ALRInstruction_i, // NAME 0x4B
+            "ALR I", // NAME 0x4B
             "JMP A", // NAME 0x4C
             "EOR A", // NAME 0x4D
             "LSR A", // NAME 0x4E
@@ -1869,7 +2048,7 @@ namespace Nem {
             "PLA", // NAME 0x68
             "ADC I", // NAME 0x69
             "ROR", // NAME 0x6A
-            "UNI", //ARRInstruction_i, // NAME 0x6B
+            "ARR I", // NAME 0x6B
             "JMP $", // NAME 0x6C
             "ADC A", // NAME 0x6D
             "ROR A", // NAME 0x6E
@@ -1965,7 +2144,7 @@ namespace Nem {
             "INY", // NAME 0xC8
             "CMP I", // NAME 0xC9
             "DEX", // NAME 0xCA
-            "UNI", //AXSInstruction_i, // NAME 0xCB
+            "AXS I", // NAME 0xCB
             "CPY A", // NAME 0xCC
             "CMP A", // NAME 0xCD
             "DEC A", // NAME 0xCE

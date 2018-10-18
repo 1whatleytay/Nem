@@ -21,9 +21,9 @@ flat out int paletteId;
 out vec2 spriteCoord;
 flat out ivec2 patternCoord;
 
-const uint flipX = uint(64);
-const uint flipY = uint(128);
-const uint patternTableIndex = uint(128);
+const uint flipX = 64u;
+const uint flipY = 128u;
+const uint patternTableIndex = 128u;
 
 bool isFlagSet(uint flags, uint flag) { return (flags & flag) == flag; }
 
@@ -40,9 +40,12 @@ void main() {
     int index = int((patternFlags & patternTableIndex) >> 7);
     int patternRef = int(patternFlags);
 
-    paletteId = int(flags & uint(3));
+    paletteId = int(flags & 3u);
     spriteCoord = vertex;
-    patternCoord = ivec2(0, patternRef * 8 + index * 8 * 256);
+    patternCoord = ivec2(0, patternRef * 8 + 0 * 8 * 256);
+
+    if (isFlagSet(flags, flipX)) spriteCoord.x = 1 - spriteCoord.x;
+    if (isFlagSet(flags, flipY)) spriteCoord.y = 1 - spriteCoord.y;
 
     vertex.x *= meta.tileWidth;
     vertex.y *= meta.tileHeight;

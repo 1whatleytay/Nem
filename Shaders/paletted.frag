@@ -3,6 +3,8 @@
 uniform sampler1D palette;
 uniform usampler2D patternTable;
 
+uniform bool grayscale = false;
+
 flat in int paletteId;
 in vec2 spriteCoord;
 flat in ivec2 patternCoord;
@@ -34,5 +36,10 @@ void main() {
     uint value = getPaletteColor(palettes[paletteId], paletteIndex);
     if (paletteIndex == uint(0)) value = uint(0x41);
     if (value > uint(0x40)) discard;
-    color = vec4(texelFetch(palette, int(value), 0).rgb, 1);
+    vec3 process = texelFetch(palette, int(value), 0).rgb;
+    if (grayscale) {
+        float baseColor = dot(process, vec3(0.299, 0.587, 0.114));
+        process = vec3(baseColor);
+    }
+    color = vec4(process, 1);
 }

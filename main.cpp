@@ -2,7 +2,7 @@
 // Created by Taylor Whatley on 2018-10-06.
 //
 
-#include "Display/Display.h"
+#include "App/App.h"
 
 #ifdef CPU_ONLY
 #include "CPU/CPU.h"
@@ -20,7 +20,7 @@ int main(int count, char** args) {
     Nem::Emulator emulator = Nem::Emulator(string(args[1]));
     emulator.cpu->exec();
 #else
-    Nem::Display display = Nem::Display(string(args[1]));
-    display.exec();
+    Nem::App app = Nem::App(string(args[1]));
+    app.exec();
 #endif
 }

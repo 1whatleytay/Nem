@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.12)
 project(Nem)
 
 set(CMAKE_CXX_STANDARD 11)
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=undefined -O1 -fno-omit-frame-pointer -g")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -O1 -fno-omit-frame-pointer -g")
 
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
@@ -10,6 +10,7 @@ set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 add_subdirectory(glfw)
 
 find_package(OpenGL REQUIRED)
+find_package(OpenAL REQUIRED)
 
 if (APPLE)
     add_definitions(-DGL_SILENCE_DEPRECATION)
@@ -26,28 +27,44 @@ set(Sources
         ROM/ROM.h
         ROM/ROM.cpp
 
+        Mapper/Mapper.h
+        Mapper/Mapper.cpp
+
         CPU/CPU.h
         CPU/CPU.cpp
         CPU/CPUMemory.cpp
-        CPU/Operations.cpp
-        CPU/Codes.cpp
+        CPU/CPUCodes.h
+        CPU/CPUCodes.cpp
 
         PPU/PPU.h
         PPU/PPU.cpp
         PPU/PPUMemory.cpp
 
-        Clock/Clock.h
-        Clock/Clock.cpp
+        APU/APU.h
+        APU/APU.cpp
 
-        Display/Display.h
-        Display/Display.cpp
-        Display/Shaders.cpp
+        Util/Clock.h
+        Util/Clock.cpp
 
-        main.cpp Controller/Controller.cpp Controller/Controller.h Mapper/Mapper.cpp Mapper/Mapper.h)
+        App/App.h
+        App/App.cpp
+        App/Display.cpp
+        App/Audio.cpp
+        App/Shaders.cpp
+
+        Controller/Controller.h
+        Controller/Controller.cpp
+
+        Debug/Profiler.h
+        Debug/Profiler.cpp
+        Debug/Disassembler.h
+        Debug/Disassembler.cpp
+
+        main.cpp)
 
 configure_file(Shaders/map.vert ${CMAKE_CURRENT_BINARY_DIR}/map.vert COPYONLY)
 configure_file(Shaders/sprite.vert ${CMAKE_CURRENT_BINARY_DIR}/sprite.vert COPYONLY)
 configure_file(Shaders/paletted.frag ${CMAKE_CURRENT_BINARY_DIR}/paletted.frag COPYONLY)
 
 add_executable(Nem ${Sources})
-target_link_libraries(Nem ${OPENGL_LIBRARIES} glfw)
+target_link_libraries(Nem ${OPENGL_LIBRARIES} ${OPENAL_LIBRARY} glfw)

@@ -10,11 +10,6 @@
 namespace Nem {
     class ROMHeader {
     public:
-        enum Mirroring {
-            Vertical,
-            Horizontal,
-        };
-
         enum Flags {
             Flag6Mirroring     = 0b00000001,
             Flag6ExtraSaveRam  = 0b00000010,
@@ -35,7 +30,7 @@ namespace Nem {
         unsigned prgRomSize, chrRomSize;
 
         Byte getMapper() const;
-        Mirroring getMirroring() const;
+        Direction getMirroring() const;
         bool hasTrainer() const;
         bool hasCHRRAM() const;
         bool zeroIsZero() const;

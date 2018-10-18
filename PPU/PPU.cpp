@@ -5,21 +5,24 @@
 #include "PPU.h"
 
 #include "../CPU/CPU.h"
-#include "../Clock/Clock.h"
+#include "../Util/Clock.h"
+
+#include <iostream>
 
 namespace Nem {
-    void PPU::nextFrame() {
-        if (isControlSet(PPURegisters::ControlFlags::VBlankNMI))
-            cpu->nmi = true;
-        registers->status |= 0b10000000;
-        masterClock->ppuReady(360);
-        registers->status &= ~0b10000000;
-        oddFrame = !oddFrame;
-    }
-
-    void PPU::waitUntilNextFrame() {
-        while (!masterClock->ppuReady(88400 + !oddFrame)) { }
-    }
+//    void PPU::nextFrame() {
+//        if (isControlSet(PPURegisters::ControlFlags::VBlankNMI)) cpu->nmi = true;
+//
+//        registers->status |= 0b10000000;
+//        masterClock->ppuReady(360);
+//        registers->status &= ~0b10000000;
+//
+//        oddFrame = !oddFrame;
+//    }
+//
+//    void PPU::waitUntilNextFrame() {
+//        while (!masterClock->ppuReady(88400 + !oddFrame)) { }
+//    }
 
     bool PPU::isControlSet(PPURegisters::ControlFlags flags) {
         return (registers->control & flags) == flags;
@@ -28,7 +31,46 @@ namespace Nem {
         return (registers->mask & flags) == flags;
     }
 
+    void PPU::waitCycles(long long cycles) {
+        masterClock->waitUntilPPUReady(cycles);
+    };
+
+    void PPU::postNMI() { cpu->postNMI(); }
+
+//    void PPU::waitUntilRendering() { while (!isRendering) { } }
+//
+//    void PPU::finishRendering() {
+//        if (!isRendering) {
+//            std::cout << "Rendering was too slow!" << std::endl;
+//        }
+//        isRendering = false;
+//    }
+
     void PPU::setCPU(Nem::CPU* nCPU) { cpu = nCPU; }
+
+//    void PPU::exec() {
+//        masterClock->startPPU();
+//        while (!stopExecution) {
+//            // Rendering
+//            //Stopwatch watch;
+//            //watch.start();
+//            isRendering = true;
+//            registers->status |= PPURegisters::StatusFlags::SprZeroHit;
+//            masterClock->waitUntilPPUReady(240 * 341 - oddFrame);
+//            registers->status &= ~PPURegisters::StatusFlags::SprZeroHit;
+//            isRendering = false;
+//            //std::cout << "Time: " << watch.stop() << std::endl;
+//
+//            // VBlank
+//            if (isControlSet(PPURegisters::ControlFlags::VBlankNMI)) cpu->postNMI();
+//            registers->status |= PPURegisters::StatusFlags::VBlankStart;
+//            masterClock->waitUntilPPUReady(22 * 341);
+//            registers->status &= ~PPURegisters::StatusFlags::VBlankStart;
+//
+//            oddFrame = !oddFrame;
+//        }
+//    }
+//    void PPU::stopExec() { stopExecution = true; }
 
     PPU::PPU(Clock* nMasterClock, Mapper* mapper) : masterClock(nMasterClock) {
         memory = new PPUMemory(mapper);

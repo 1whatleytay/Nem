@@ -29,6 +29,7 @@ namespace Nem {
     class ROM;
     class CPU;
     class PPU;
+    class APU;
     class Clock;
     class Mapper;
     class ControllerInterface;
@@ -42,6 +43,7 @@ namespace Nem {
 
         CPU* cpu = nullptr;
         PPU* ppu = nullptr;
+        APU* apu = nullptr;
 
         void setController(int index, ControllerInterface* controller);
 

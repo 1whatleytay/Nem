@@ -1,0 +1,10 @@
+nestest.nes - PASSING
+oam_read.nes - PASSING
+01-basics.nes - PASSING
+02-implied.nes - PASSING
+03-immediate.nes - FAIL
+04-zero_page.nes - PASSING
+05-zp_xy.nes - PASSING
+06-absolute.nes - PASSING
+07-abs_xy.nes - FAIL
+color_test.nes - PASSING
