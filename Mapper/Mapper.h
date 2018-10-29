@@ -7,6 +7,8 @@
 
 #include "../Internal.h"
 
+#include <functional>
+
 namespace Nem {
     class ROM;
     class ROMHeader;

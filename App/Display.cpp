@@ -16,9 +16,6 @@ namespace Nem {
     const double windowSizeMultiplier = 2.5;
     const int spriteCount = 0x2000 / 16;
 
-    bool debugFlag = false;
-    bool getDebugFlag() { return debugFlag; }
-
     void windowKeyInput(GLFWwindow* window, int key, int scancode, int action, int mods) {
         Display* display = (Display*)glfwGetWindowUserPointer(window);
         display->keyInput(key, action);
@@ -133,10 +130,10 @@ namespace Nem {
     }
 
     void Display::loop() {
+        ppu->start();
         while (!glfwWindowShouldClose(window)) {
             glfwPollEvents();
 
-            debugFlag = true;
             ppu->registers->status |= PPURegisters::StatusFlags::SprZeroHit;
 
             checkEdits();
@@ -152,7 +149,6 @@ namespace Nem {
             ppu->registers->status &= ~PPURegisters::StatusFlags::VBlankStart;
 
             ppu->oddFrame = !ppu->oddFrame;
-            debugFlag = false;
         }
     }
 

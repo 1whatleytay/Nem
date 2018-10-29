@@ -99,7 +99,7 @@ namespace Nem {
         };
 
         enum StatusFlags {
-            LSBRegister = 0b00011111,
+            LowBits = 0b00011111,
             SprOverflow = 0b00100000,
             SprZeroHit  = 0b01000000,
             VBlankStart = 0b10000000,
@@ -133,6 +133,7 @@ namespace Nem {
 
         bool oddFrame = false;
 
+        void start();
         void waitCycles(long long cycles);
 
         void postNMI();

@@ -19,8 +19,27 @@ namespace Nem {
         return stream.str();
     }
 
+    string makeHexZeroed(int hex, int padding) {
+        string old = makeHex(hex);
+        return std::string(padding - old.length(), '0') + old;
+    }
+
+    string makeHex(Byte hex) {
+        return makeHexZeroed(hex, 2);
+    }
+    string makeHex(Address hex) {
+        return makeHexZeroed(hex, 4);
+    }
+
+    string makeBin(Byte bin) {
+        return std::bitset<sizeof(Byte) * 8>(bin).to_string();
+    }
+    string makeBin(Address bin) {
+        return std::bitset<sizeof(Address) * 8>(bin).to_string();
+    }
+
     string makeBin(int bin) {
-        return std::bitset<32>(bin).to_string();
+        return std::bitset<sizeof(int) * 8>(bin).to_string();
     }
 
     Address putByte(bool hi, Address address, Byte write) {

@@ -7,7 +7,6 @@
 
 #include <string>
 #include <vector>
-#include <functional>
 
 using std::string;
 using std::vector;
@@ -17,32 +16,36 @@ typedef uint16_t Address;
 
 #define kilobyte(a) a * 1024
 
-//#define NULL_CONTROLLER_COMPLAIN
-//#define MARIO_8057
-//#define FORCE_ENTRY 0x8000
+//#define CPU_ENTRY 0x8000
 //#define RTI_MINUS_ONE
-//#define PRINT_INSTRUCTIONS
 //#define CPU_ONLY
 #define FORCE_SPRITE_ZERO_HIT
-#define NMI_RESET
+#define SYNC_CPU_PPU
+//#define NO_SLEEP
 #define NO_AUDIO
 
-//#define PROFILE_CPU
-//#define PROFILE_DETECT_INFINITE_LOOPS
+#define NEM_PROFILE
+#define NEM_PROFILE_THREADED
 
 namespace Nem {
+    bool getDebugFlag(string name);
+    void setDebugFlag(string name, bool value);
+
     enum Direction {
         Vertical,
         Horizontal,
     };
 
-    bool getDebugFlag();
     Address getDebugPC();
 
     inline Byte lo(Address value) { return (Byte)(value & 0xff); }
     inline Byte hi(Address value) { return (Byte)((value >> 8) & 0xff); }
     inline Address makeAddress(Byte a, Byte b) { return (Address)(b * 0x100 + a); }
+    string makeHex(Byte hex);
+    string makeHex(Address hex);
     string makeHex(int hex);
+    string makeBin(Byte bin);
+    string makeBin(Address bin);
     string makeBin(int bin);
     short makeSigned(Byte value);
 

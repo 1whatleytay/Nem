@@ -3,12 +3,26 @@
 //
 
 #include "CPU.h"
-#include "../Util/Clock.h"
 #include "CPUCodes.h"
 
+#include "../Util/Clock.h"
+#ifdef NEM_PROFILE
+#include "../Debug/Profiler.h"
+#endif
+
 #include <iostream>
+#include <unordered_map>
+
+#ifndef CPU_ENTRY
+#define CPU_ENTRY memory->getResetVector()
+#endif
 
 namespace Nem {
+    std::unordered_map<string, bool> debugFlags;
+
+    bool getDebugFlag(string name) { return debugFlags[name]; }
+    void setDebugFlag(string name, bool value) { debugFlags[name] = value; }
+
     CPU* debugCPU = nullptr;
 
     Address getDebugPC() {
@@ -18,7 +32,10 @@ namespace Nem {
     void CPU::waitCycles(long long cycles) { masterClock->waitUntilCPUReady(cycles); }
 
     void CPU::processIRQ() {
-
+        if (irq) {
+            std::cout << "IRQ Sent" << std::endl;
+            irq = false;
+        }
     }
     void CPU::processNMI() {
         if (nmi) {
@@ -26,9 +43,7 @@ namespace Nem {
             pushByte(registers->status);
             registers->programCounter = memory->getNMIVector();
             registers->programCounter--;
-#ifdef NMI_RESET
             nmi = false;
-#endif
         }
     }
 
@@ -86,26 +101,19 @@ namespace Nem {
     void CPU::setController(int index, ControllerInterface* controller) { memory->setController(index, controller); }
 
     void CPU::step() {
-//#ifdef PROFILE_CPU
-//        profiler.analyzeStep();
-//#endif
+        registers->programCounter++;
 
-        Address index = ++registers->programCounter;
-
-        Byte instructionId = memory->getByte(index);
-        Instruction instruction = opFunctions[instructionId];
-
-#ifdef PRINT_INSTRUCTIONS
-        outFile << makeHex(registers->programCounter) << ", " << makeHex(instructionId) << ", " << opNames[instructionId] << ", "
-        << makeHex(registers->accumulator) << ", " << makeHex(registers->indexX) << ", " << makeHex(registers->indexY) << ", "
-        << makeHex(registers->status) << ", " << makeHex(registers->stackPointer) << ", " << cycles << "\n";
+#ifdef NEM_PROFILE
+        profiler->analyzeStep();
 #endif
-        long long cyclesBefore = cycles;
 
+        Byte opCode = memory->getByte(registers->programCounter);
+        Instruction instruction = opFunctions[opCode];
+
+        cycles = 2; // Fetch cycles.
         int length = instruction(this);
-        cycles += 2; // Every instruction usually takes at least 2 cycles.
 
-        masterClock->waitUntilCPUReady(cycles - cyclesBefore);
+        masterClock->waitUntilCPUReady(cycles);
 
         registers->programCounter += length;
 
@@ -119,21 +127,18 @@ namespace Nem {
     }
     void CPU::stopExec() {
         stopExecution = true;
-#ifdef PRINT_INSTRUCTIONS
-        outFile.close();
-#endif
     }
 
     CPU::CPU(Clock* nMasterClock, Mapper* mapper) : masterClock(nMasterClock) {
         memory = new CPUMemory(this, mapper);
         registers = new CPURegisters();
 
-#ifdef FORCE_ENTRY
-        registers->programCounter = FORCE_ENTRY;
-#else
-        registers->programCounter = memory->getResetVector();
-#endif
+        registers->programCounter = CPU_ENTRY;
         registers->programCounter--;
+
+#ifdef NEM_PROFILE
+        profiler = new Profiler(this);
+#endif
 
         debugCPU = this;
     }
@@ -142,8 +147,8 @@ namespace Nem {
         delete memory;
         delete registers;
 
-#ifdef PRINT_INSTRUCTIONS
-        outFile.close();
+#ifdef NEM_PROFILE
+        delete profiler;
 #endif
     }
 }

@@ -18,11 +18,11 @@ endif()
 
 set(Sources
 
-        Emulator.h
-        Emulator.cpp
-
         Internal.h
         Internal.cpp
+
+        Emulator.h
+        Emulator.cpp
 
         ROM/ROM.h
         ROM/ROM.cpp
@@ -58,13 +58,11 @@ set(Sources
         Debug/Profiler.h
         Debug/Profiler.cpp
         Debug/Disassembler.h
-        Debug/Disassembler.cpp
-
-        main.cpp)
+        Debug/Disassembler.cpp)
 
 configure_file(Shaders/map.vert ${CMAKE_CURRENT_BINARY_DIR}/map.vert COPYONLY)
 configure_file(Shaders/sprite.vert ${CMAKE_CURRENT_BINARY_DIR}/sprite.vert COPYONLY)
 configure_file(Shaders/paletted.frag ${CMAKE_CURRENT_BINARY_DIR}/paletted.frag COPYONLY)
 
-add_executable(Nem ${Sources})
+add_executable(Nem ${Sources} main.cpp)
 target_link_libraries(Nem ${OPENGL_LIBRARIES} ${OPENAL_LIBRARY} glfw)

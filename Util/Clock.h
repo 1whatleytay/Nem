@@ -9,13 +9,15 @@ namespace Nem {
     class Clock {
         long long cpuLastTime;
         long long ppuLastTime;
+
+        bool cpuStarted = false;
+        bool ppuStarted = false;
+
+        bool cpuReady(int cycles);
+        bool ppuReady(int cycles);
     public:
-
-        bool cpuReady(long long cycles);
-        bool ppuReady(long long cycles);
-
-        void waitUntilCPUReady(long long cycles);
-        void waitUntilPPUReady(long long cycles);
+        void waitUntilCPUReady(int cycles);
+        void waitUntilPPUReady(int cycles);
 
         void startCPU();
         void startPPU();

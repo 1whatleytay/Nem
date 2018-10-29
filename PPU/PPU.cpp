@@ -35,6 +35,8 @@ namespace Nem {
         masterClock->waitUntilPPUReady(cycles);
     };
 
+    void PPU::start() { masterClock->startPPU(); }
+
     void PPU::postNMI() { cpu->postNMI(); }
 
 //    void PPU::waitUntilRendering() { while (!isRendering) { } }

@@ -7,14 +7,6 @@
 
 #include "../Internal.h"
 
-//#ifdef PROFILE_CPU
-//#include "../Debug/Profiler.h"
-//#endif
-
-#ifdef PRINT_INSTRUCTIONS
-#include <fstream>
-#endif
-
 namespace Nem {
     class CPU;
     class PPU;
@@ -22,6 +14,10 @@ namespace Nem {
     class Mapper;
     class Clock;
     class ControllerInterface;
+
+#ifdef NEM_PROFILE
+    class Profiler;
+#endif
 
     enum CPUMemoryRegion {
         WorkRam      = 0x0000,
@@ -96,23 +92,15 @@ namespace Nem {
         void processIRQ();
         void processNMI();
 
-//#ifdef PROFILE_CPU
-//        friend void Profiler::analyzeStep();
-//#endif
-
     public:
-        long long cycles = 0;
+        int cycles = 0;
+
+#ifdef NEM_PROFILE
+        Profiler* profiler = nullptr;
+#endif
 
         CPUMemory* memory = nullptr;
         CPURegisters* registers = nullptr;
-
-#ifdef PRINT_INSTRUCTIONS
-        std::ofstream outFile = std::ofstream("/Users/desgroup/Desktop/nem.log.txt");
-#endif
-
-//#ifdef PROFILE_CPU
-//        Profiler profiler = Profiler(this);
-//#endif
 
         void postIRQ();
         void postNMI();

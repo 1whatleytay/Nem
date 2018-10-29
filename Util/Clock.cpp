@@ -4,7 +4,11 @@
 
 #include "Clock.h"
 
+#include "../Internal.h"
+
 #include <chrono>
+#include <thread>
+#include <iostream>
 
 namespace Nem {
     long long currentTime() {
@@ -16,7 +20,11 @@ namespace Nem {
         return (long long)((double)time / 1000000.0 * 21477272.0);
     }
 
-    bool Clock::cpuReady(long long cycles) {
+    long long millis(long long hz) {
+        return (long long)((double)hz / 21377272.0 * 1000000.0);
+    }
+
+    bool Clock::cpuReady(int cycles) {
         long long hz = hertz(currentTime());
         long long difference = hz - cpuLastTime;
         long long cyclesInHz = cycles * 12;
@@ -27,7 +35,7 @@ namespace Nem {
         return false;
     }
 
-    bool Clock::ppuReady(long long cycles) {
+    bool Clock::ppuReady(int cycles) {
         long long hz = hertz(currentTime());
         long long difference = hz - ppuLastTime;
         long long cyclesInHz = cycles * 4;
@@ -38,15 +46,51 @@ namespace Nem {
         return false;
     }
 
-    void Clock::waitUntilCPUReady(long long cycles) {
+    void Clock::waitUntilCPUReady(int cycles) {
+#ifdef NO_SLEEP
         while (!cpuReady(cycles)) { }
+#else
+        long long time = currentTime();
+        long long timePassed = time - cpuLastTime;
+        long long timeToWait = millis(cycles * 12) - timePassed;
+        if (timeToWait > 0) std::this_thread::sleep_for(std::chrono::microseconds(timeToWait));
+        cpuLastTime = time + timeToWait;
+#endif
     }
-    void Clock::waitUntilPPUReady(long long cycles) {
+    void Clock::waitUntilPPUReady(int cycles) {
+#ifdef NO_SLEEP
         while (!ppuReady(cycles)) { }
+#else
+        long long time = currentTime();
+        long long timePassed = time - ppuLastTime;
+        long long timeToWait = millis(cycles * 4) - timePassed;
+        if (timeToWait > 0) std::this_thread::sleep_for(std::chrono::microseconds(timeToWait));
+        ppuLastTime = time + timeToWait;
+#endif
     }
 
-    void Clock::startCPU() { cpuLastTime = hertz(currentTime()); }
-    void Clock::startPPU() { ppuLastTime = hertz(currentTime()); }
+    void Clock::startCPU() {
+#ifdef SYNC_CPU_PPU
+        cpuStarted = true;
+        while (!ppuStarted) { }
+#endif
+#ifdef NO_SLEEP
+        cpuLastTime = hertz(currentTime());
+#else
+        cpuLastTime = currentTime();
+#endif
+    }
+    void Clock::startPPU() {
+#ifdef SYNC_CPU_PPU
+        ppuStarted = true;
+        while (!cpuStarted) { }
+#endif
+#ifdef NO_SLEEP
+        ppuLastTime = hertz(currentTime());
+#else
+        ppuLastTime = currentTime();
+#endif
+    }
 
     Clock::Clock() : cpuLastTime(hertz(currentTime())), ppuLastTime(hertz(currentTime())) { }
 
@@ -55,10 +99,10 @@ namespace Nem {
     }
 
     void Stopwatch::start() {
-        lastTime = currentTime() / 1000;
+        lastTime = currentTime();
         lap = 0;
     }
     long long Stopwatch::stop() {
-        return currentTime() / 1000 - lastTime;
+        return currentTime() - lastTime;
     }
 }
