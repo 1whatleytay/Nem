@@ -8,6 +8,7 @@
 #include "../PPU/PPU.h"
 #include "../Util/Clock.h"
 
+#ifndef CPU_ONLY
 #include <GLFW/glfw3.h>
 
 #include <iostream>
@@ -104,9 +105,18 @@ namespace Nem {
 
             glUniform1i(uniformBkgPatternTableDrawIndex,
                         ppu->isControlSet(PPURegisters::ControlFlags::BkgPatternTable));
-            glUniform1i(uniformBkgNameTableDrawIndex, 0);
 
-            glDrawArrays(GL_TRIANGLES, 0, 32 * 30 * 6);
+//            int baseNameTable = ppu->memory->getNameTableByIndex(
+//                    ppu->registers->control & PPURegisters::ControlFlags::NameTable);
+
+            //int val = (int)ppu->registers->scrollX;
+            int val = 0;
+            glUniform1i(uniformBkgScrollX, val);
+            glUniform1i(uniformBkgNameTableDrawIndex, 0);
+            glDrawArrays(GL_TRIANGLES, 0, 30 * 32 * 6);
+//            glUniform1i(uniformBkgScrollX, val - 256);
+//            glUniform1i(uniformBkgNameTableDrawIndex, !baseNameTable);
+//            glDrawArrays(GL_TRIANGLES, 0, 30 * 32 * 6);
         }
 
         if (ppu->isMaskSet(PPURegisters::MaskFlags::ShowSPR)) {
@@ -120,6 +130,8 @@ namespace Nem {
     }
 
     void Display::keyInput(int key, int action) {
+        if (key == GLFW_KEY_K || action == GLFW_PRESS)
+            setDebugFlag("profiler-execution-analysis", !getDebugFlag("profiler-execution-analysis"));
         if (mainControllerBindings.find(key) != mainControllerBindings.end()) {
             if (action == GLFW_PRESS) mainController.press(mainControllerBindings[key]);
             else if (action == GLFW_RELEASE) mainController.release(mainControllerBindings[key]);
@@ -197,3 +209,4 @@ namespace Nem {
         glfwTerminate();
     }
 }
+#endif

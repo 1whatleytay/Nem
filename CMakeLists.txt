@@ -66,3 +66,7 @@ configure_file(Shaders/paletted.frag ${CMAKE_CURRENT_BINARY_DIR}/paletted.frag C
 
 add_executable(Nem ${Sources} main.cpp)
 target_link_libraries(Nem ${OPENGL_LIBRARIES} ${OPENAL_LIBRARY} glfw)
+target_compile_definitions(Nem PRIVATE NO_AUDIO)
+
+add_executable(NemCPU ${Sources} main.cpp)
+target_compile_definitions(NemCPU PRIVATE CPU_ONLY NO_AUDIO)

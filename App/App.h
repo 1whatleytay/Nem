@@ -8,16 +8,22 @@
 #include "../Controller/Controller.h"
 #include "../Emulator.h"
 
+#ifndef CPU_ONLY
 #define GLFW_INCLUDE_GLCOREARB
 #include <GLFW/glfw3.h>
 
+#ifndef NO_AUDIO
 #include <OpenAL/al.h>
 #include <OpenAL/alc.h>
+#endif
+#endif
 
 #include <thread>
 #include <unordered_map>
 
 namespace Nem {
+#ifndef CPU_ONLY
+#ifndef NO_AUDIO
     class Audio {
         APU* apu;
 
@@ -39,6 +45,7 @@ namespace Nem {
         explicit Audio(APU* nApu);
         ~Audio();
     };
+#endif
 
     class Display {
         PPU* ppu;
@@ -90,10 +97,15 @@ namespace Nem {
         explicit Display(PPU* nPpu, string title = "Nemulator");
         ~Display();
     };
+#endif
 
     class App : private Emulator {
+#ifndef CPU_ONLY
         Display* display = nullptr;
+#ifndef NO_AUDIO
         Audio* audio = nullptr;
+#endif
+#endif
 
         std::thread* cpuThread = nullptr;
         std::thread* ppuThread = nullptr;

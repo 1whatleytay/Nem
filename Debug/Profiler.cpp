@@ -14,9 +14,9 @@ namespace Nem {
     void Profiler::executionAnalysis(DisInst inst) {
         if (config.executionAnalysis.doProfile) {
             int bidIndex = -1;
-            if (config.executionAnalysis.executionMemory.size() >= config.executionAnalysis.executionMemorySize) {
+            if (config.executionAnalysis.executionMemorySizeLive >= config.executionAnalysis.executionMemorySize) {
                 int bid = INT_MAX;
-                for (int a = 0; a < config.executionAnalysis.executionMemory.size(); a++) {
+                for (int a = 0; a < config.executionAnalysis.executionMemorySizeLive; a++) {
                     if (config.executionAnalysis.executionMemory[a].lastReferred < bid) {
                         bid = config.executionAnalysis.executionMemory[a].lastReferred;
                         bidIndex = a;
@@ -25,7 +25,7 @@ namespace Nem {
             }
             bool wrongOP = false;
             int findIndex = -1;
-            for (int a = 0; a < config.executionAnalysis.executionMemory.size(); a++) {
+            for (int a = 0; a < config.executionAnalysis.executionMemorySizeLive; a++) {
                 if (config.executionAnalysis.executionMemory[a].pc == inst.registers.programCounter) {
                     findIndex = a;
                     wrongOP = config.executionAnalysis.executionMemory[a].opCode != inst.code;
@@ -38,8 +38,10 @@ namespace Nem {
                 occurrences.opCode = inst.code;
 
                 if (bidIndex == -1) {
-                    findIndex = (int)config.executionAnalysis.executionMemory.size();
-                    config.executionAnalysis.executionMemory.push_back(occurrences);
+                    findIndex = config.executionAnalysis.executionMemorySizeLive;
+                    config.executionAnalysis.executionMemory[
+                            config.executionAnalysis.executionMemorySizeLive] = occurrences;
+                    config.executionAnalysis.executionMemorySizeLive++;
                 } else {
                     findIndex = bidIndex;
                     config.executionAnalysis.executionMemory[findIndex] = occurrences;
@@ -65,7 +67,7 @@ namespace Nem {
                     !config.executionAnalysis.executionMemory[findIndex].loopDetectionHasMarked) {
                     setDebugFlag("profiler-loop-detected", true);
 
-                    std::cout << "[Profiler Detected Lengthy Loop]" << std::endl;
+                    std::cout << "[Profiler Detected Loop]" << std::endl;
                     std::cout << inst.toString() << std::endl;
                     config.executionAnalysis.executionMemory[findIndex].loopDetectionHasMarked = true;
                 }
@@ -101,7 +103,7 @@ namespace Nem {
             }
             if (config.trail.listMemory) {
                 std::cout << "[Profiler Trail List]" << std::endl;
-                cpu->memory->list(cpu->registers->programCounter - (Address)config.trail.listBytesBefore,
+                cpu->memory.list(cpu->registers.programCounter - (Address)config.trail.listBytesBefore,
                                   (Address)config.trail.listBytesAfter +
                                   (Address)config.trail.listBytesBefore + (Address)1);
             }
@@ -112,9 +114,9 @@ namespace Nem {
         if (!config.doProfile) return;
 
         Byte fetch[3];
-        for (Address a = 0; a < 3; a++) fetch[a] = cpu->memory->getByte(cpu->registers->programCounter + a);
+        for (Address a = 0; a < 3; a++) fetch[a] = cpu->memory.getByte(cpu->registers.programCounter + a, false);
 
-        DisInst inst = DisInst(fetch, cpu->registers);
+        DisInst inst = DisInst(fetch, cpu->registers, cpu->cycles);
 
         if (config.printInstructions.doProfile) {
             if (config.printInstructions.binary) {
@@ -132,6 +134,11 @@ namespace Nem {
             }
         }
 
+#ifdef NEM_PROFILE_ANALYSIS_FLAG
+    if (!getDebugFlag("profiler-execution-analysis")) return;
+        std::cout << "BAWDSFAS" << std::endl;
+#endif
+
 #ifdef NEM_PROFILE_THREADED
         config.executionAnalysis.processQueueMutex.lock();
         config.executionAnalysis.processQueue.push(inst);
@@ -144,9 +151,9 @@ namespace Nem {
     Profiler::Profiler(Nem::CPU *nCpu) : cpu(nCpu) {
         if (config.printVectors.doProfile) {
             std::cout
-            << "[IRQ: " << makeHex(cpu->memory->getIRQVector())
-            << " RESET: " << makeHex(cpu->memory->getResetVector())
-            << " NMI: " << makeHex(cpu->memory->getNMIVector()) << "]" << std::endl;
+            << "[IRQ: " << makeHex(cpu->memory.getIRQVector())
+            << " RESET: " << makeHex(cpu->memory.getResetVector())
+            << " NMI: " << makeHex(cpu->memory.getNMIVector()) << "]" << std::endl;
         }
         if (config.printInstructions.doProfile) {
             std::ios_base::open_mode mode = std::ios::trunc;
@@ -154,8 +161,8 @@ namespace Nem {
             config.printInstructions.outFile.open(config.printInstructions.fileName, mode);
         }
         if (config.executionAnalysis.doProfile) {
-            config.executionAnalysis.executionMemory.reserve(
-                    (unsigned long)config.executionAnalysis.executionMemorySize);
+            config.executionAnalysis.executionMemory = new InstructionOccurrences[
+                    config.executionAnalysis.executionMemorySize];
         }
 
 #ifdef NEM_PROFILE_THREADED
@@ -164,6 +171,8 @@ namespace Nem {
     }
     Profiler::~Profiler() {
         if (config.printInstructions.doProfile) config.printInstructions.outFile.close();
+
+        delete[] config.executionAnalysis.executionMemory;
 
 #ifdef NEM_PROFILE_THREADED
         config.executionAnalysis.stopAnalysis = true;

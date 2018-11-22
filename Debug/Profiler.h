@@ -30,19 +30,19 @@ namespace Nem {
     };
 
     struct ProfilerConfigPrintVectors {
-        bool doProfile = true;
+        bool doProfile = false;
     };
 
     struct ProfilerConfigPrintInstructions {
-        bool doProfile = false;
-        bool binary = false;
+        bool doProfile = true;
+        bool binary = true;
         string fileName = "/Users/desgroup/Desktop/nem.log.txt";
         std::ofstream outFile;
     };
 
     struct ProfilerConfigTrail {
-        bool doProfile = true;
-        int trailLength = 100;
+        bool doProfile = false;
+        int trailLength = 1000;
         std::queue<DisInst> trailQueue;
         bool listMemory = false;
         int listBytesBefore = 20;
@@ -50,10 +50,11 @@ namespace Nem {
     };
 
     struct ProfilerConfigExecutionAnalysis {
-        bool doProfile = true;
+        bool doProfile = false;
         int executionMemorySize = 2000;
         int currentInstruction = 0;
-        std::vector<InstructionOccurrences> executionMemory;
+        int executionMemorySizeLive = 0;
+        InstructionOccurrences* executionMemory;
 #ifdef NEM_PROFILE_THREADED
         volatile bool stopAnalysis = false;
         std::queue<DisInst> processQueue;
@@ -63,7 +64,7 @@ namespace Nem {
     };
 
     struct ProfilerConfigLoopDetection {
-        bool doProfile = true;
+        bool doProfile = false;
         int minimumExecutionCount = 1000;
     };
 

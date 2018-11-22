@@ -11,6 +11,7 @@
 #include <iostream>
 
 namespace Nem {
+#ifndef CPU_ONLY
     void App::loadBindings() {
         display->mainControllerBindings.insert({GLFW_KEY_UP, Buttons::ButtonUp});
         display->mainControllerBindings.insert({GLFW_KEY_DOWN, Buttons::ButtonDown});
@@ -30,6 +31,7 @@ namespace Nem {
         display->secondControllerBindings.insert({GLFW_KEY_E, Buttons::ButtonStart});
         display->secondControllerBindings.insert({GLFW_KEY_R, Buttons::ButtonSelect});
     }
+#endif
 
     void App::exec() {
         cpuThread = new std::thread(&CPU::exec, cpu);
@@ -39,12 +41,15 @@ namespace Nem {
         audioThread = new std::thread(&Audio::exec, audio);
 #endif
 
+#ifndef CPU_ONLY
         display->exec();
+#endif
     }
 
     App::App(string pathToRom) : Emulator(pathToRom) {
         std::cout << rom->getRomInfo() << std::endl;
 
+#ifndef CPU_ONLY
         display = new Display(ppu, "Nemulator - " + rom->getRomName());
 #ifndef NO_AUDIO
         audio = new Audio(apu);
@@ -53,6 +58,7 @@ namespace Nem {
 
         setController(0, &display->mainController);
         setController(1, &display->secondController);
+#endif
     }
 
     App::~App() {
@@ -64,10 +70,14 @@ namespace Nem {
         if (cpuThread) cpuThread->join();
         delete cpuThread;
 
+#ifndef CPU_ONLY
+#ifndef NO_AUDIO
         if (audio) audio->stopExec();
         if (audioThread) audioThread->join();
         delete audio;
+#endif
 
         delete display;
+#endif
     }
 }

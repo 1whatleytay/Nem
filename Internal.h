@@ -16,16 +16,9 @@ typedef uint16_t Address;
 
 #define kilobyte(a) a * 1024
 
-//#define CPU_ENTRY 0x8000
-//#define RTI_MINUS_ONE
-//#define CPU_ONLY
-#define FORCE_SPRITE_ZERO_HIT
-#define SYNC_CPU_PPU
-//#define NO_SLEEP
-#define NO_AUDIO
-
 #define NEM_PROFILE
-#define NEM_PROFILE_THREADED
+//#define NEM_PROFILE_THREADED
+//#define NEM_PROFILE_ANALYSIS_FLAG
 
 namespace Nem {
     bool getDebugFlag(string name);

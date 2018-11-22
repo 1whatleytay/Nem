@@ -4,11 +4,13 @@
 
 #include "Clock.h"
 
-#include "../Internal.h"
-
 #include <chrono>
 #include <thread>
 #include <iostream>
+
+#ifdef CPU_ONLY
+#undef SYNC_CPU_PPU
+#endif
 
 namespace Nem {
     long long currentTime() {
@@ -24,7 +26,7 @@ namespace Nem {
         return (long long)((double)hz / 21377272.0 * 1000000.0);
     }
 
-    bool Clock::cpuReady(int cycles) {
+    bool Clock::cpuReady(long long cycles) {
         long long hz = hertz(currentTime());
         long long difference = hz - cpuLastTime;
         long long cyclesInHz = cycles * 12;
@@ -35,7 +37,7 @@ namespace Nem {
         return false;
     }
 
-    bool Clock::ppuReady(int cycles) {
+    bool Clock::ppuReady(long long cycles) {
         long long hz = hertz(currentTime());
         long long difference = hz - ppuLastTime;
         long long cyclesInHz = cycles * 4;
@@ -46,7 +48,7 @@ namespace Nem {
         return false;
     }
 
-    void Clock::waitUntilCPUReady(int cycles) {
+    void Clock::waitUntilCPUReady(long long cycles) {
 #ifdef NO_SLEEP
         while (!cpuReady(cycles)) { }
 #else
@@ -57,7 +59,7 @@ namespace Nem {
         cpuLastTime = time + timeToWait;
 #endif
     }
-    void Clock::waitUntilPPUReady(int cycles) {
+    void Clock::waitUntilPPUReady(long long cycles) {
 #ifdef NO_SLEEP
         while (!ppuReady(cycles)) { }
 #else

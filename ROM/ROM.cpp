@@ -114,7 +114,7 @@ namespace Nem {
 
     ROM::ROM(string pathToRom) : romPath(pathToRom),
         romData(loadRomData(pathToRom)),
-        header(romData),
+        header(ROMHeader(romData)),
         prgROM(&romData[0] + 16,
                 &romData[0] + 16 + header.prgRomSize),
         chrROM(&romData[0] + 16 + header.prgRomSize,

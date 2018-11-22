@@ -11,7 +11,7 @@
 #include <iostream>
 
 int main(int count, char** args) {
-    if (count < 1) {
+    if (count <= 1) {
         std::cout << "Too few arguments." << std::endl;
         return 0;
     }
@@ -23,4 +23,5 @@ int main(int count, char** args) {
     Nem::App app = Nem::App(string(args[1]));
     app.exec();
 #endif
+    return 0;
 }

@@ -5,6 +5,9 @@
 #ifndef NEM_CLOCK_H
 #define NEM_CLOCK_H
 
+#define NO_SLEEP
+#define SYNC_CPU_PPU
+
 namespace Nem {
     class Clock {
         long long cpuLastTime;
@@ -13,11 +16,11 @@ namespace Nem {
         bool cpuStarted = false;
         bool ppuStarted = false;
 
-        bool cpuReady(int cycles);
-        bool ppuReady(int cycles);
+        bool cpuReady(long long cycles);
+        bool ppuReady(long long cycles);
     public:
-        void waitUntilCPUReady(int cycles);
-        void waitUntilPPUReady(int cycles);
+        void waitUntilCPUReady(long long cycles);
+        void waitUntilPPUReady(long long cycles);
 
         void startCPU();
         void startPPU();

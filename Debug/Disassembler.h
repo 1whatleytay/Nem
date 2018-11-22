@@ -8,29 +8,9 @@
 #include "../Internal.h"
 
 #include "../CPU/CPU.h"
+#include "../CPU/CPUCodes.h"
 
 namespace Nem {
-    union InstArguments {
-        Byte value;
-        Address pointer;
-    };
-
-    enum AddressMode {
-        Implied,
-        Immediate,
-        ZeroPage,
-        ZeroPageX,
-        ZeroPageY,
-        Absolute,
-        AbsoluteX,
-        AbsoluteY,
-        IndirectX,
-        IndirectY,
-        IndirectAbsolute,
-        Relative,
-        Unknown,
-    };
-
     class InstInfo {
     public:
         string name;
@@ -48,13 +28,13 @@ namespace Nem {
     class DisInst : public InstInfo {
     public:
         InstArguments arguments;
-
         CPURegisters registers;
+        int cycles;
 
         string toString() const override;
         vector<Byte> toBinary() const;
 
-        DisInst(Byte memory[3], CPURegisters* nRegisters);
+        DisInst(Byte memory[3], CPURegisters nRegisters, int nCycles);
     };
 }
 

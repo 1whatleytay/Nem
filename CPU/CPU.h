@@ -5,6 +5,10 @@
 #ifndef NEM_CPU_H
 #define NEM_CPU_H
 
+#define CPU_ENTRY 0xc000
+#define RTI_MINUS_ONE
+//#define FORCE_SPRITE_ZERO_HIT
+
 #include "../Internal.h"
 
 namespace Nem {
@@ -51,10 +55,10 @@ namespace Nem {
 
         MappedAddress mapAddress(Address address);
 
-        Byte getByte(Address address);
-        Address getAddress(Address address);
-        void setByte(Address address, Byte value);
-        void setAddress(Address address, Address value);
+        Byte getByte(Address address, bool cycle = true);
+        Address getAddress(Address address, bool cycle = true);
+        void setByte(Address address, Byte value, bool cycle = true);
+        void setAddress(Address address, Address value, bool cycle = true);
 
         Address getNMIVector();
         Address getResetVector();
@@ -99,16 +103,20 @@ namespace Nem {
         Profiler* profiler = nullptr;
 #endif
 
-        CPUMemory* memory = nullptr;
-        CPURegisters* registers = nullptr;
+        CPUMemory memory;
+        CPURegisters registers;
 
         void postIRQ();
         void postNMI();
 
-        Byte nextByte(Address next = 1);
-        Address nextAddress(Address next = 1);
+        Byte thisByte(bool cycle = true);
+        Byte nextByte(bool cycle = true);
+        Address nextAddress(bool cycle = true);
 
         void waitCycles(long long cycles);
+        void readCycle();
+        Byte readCycle(Byte value);
+        void writeCycle();
 
         bool isFlagSet(CPURegisters::StatusFlags flags);
         void clearFlags(CPURegisters::StatusFlags flags);

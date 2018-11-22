@@ -45,6 +45,8 @@ void main() {
     vertex.x += float(tilePosX);
     vertex.y += float(tilePosY);
 
+    vertex.x -= float(scrollX) / 8;
+
     vertex.x *= meta.tileUnitWidth;
     vertex.y *= meta.tileUnitHeight;
 

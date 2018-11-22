@@ -14,7 +14,7 @@
 #include <unordered_map>
 
 #ifndef CPU_ENTRY
-#define CPU_ENTRY memory->getResetVector()
+#define CPU_ENTRY memory.getResetVector()
 #endif
 
 namespace Nem {
@@ -26,10 +26,20 @@ namespace Nem {
     CPU* debugCPU = nullptr;
 
     Address getDebugPC() {
-        return debugCPU->registers->programCounter;
+        return debugCPU->registers.programCounter;
     }
 
     void CPU::waitCycles(long long cycles) { masterClock->waitUntilCPUReady(cycles); }
+
+    void CPU::readCycle() {
+        cycles++;
+        waitCycles(1);
+    }
+    Byte CPU::readCycle(Byte value) { readCycle(); return value; }
+    void CPU::writeCycle() {
+        cycles++;
+        waitCycles(1);
+    }
 
     void CPU::processIRQ() {
         if (irq) {
@@ -39,10 +49,10 @@ namespace Nem {
     }
     void CPU::processNMI() {
         if (nmi) {
-            pushAddress(registers->programCounter);
-            pushByte(registers->status);
-            registers->programCounter = memory->getNMIVector();
-            registers->programCounter--;
+            pushAddress(registers.programCounter);
+            pushByte(registers.status);
+            registers.programCounter = memory.getNMIVector();
+            registers.programCounter--;
             nmi = false;
         }
     }
@@ -50,24 +60,28 @@ namespace Nem {
     void CPU::postIRQ() { irq = true; }
     void CPU::postNMI() { nmi = true; }
 
-    Byte CPU::nextByte(Address next) {
-        return memory->getByte(registers->programCounter + next);
+    Byte CPU::thisByte(bool cycle) {
+        return memory.getByte(registers.programCounter, cycle);
     }
 
-    Address CPU::nextAddress(Address next) {
-        return memory->getAddress(registers->programCounter + next);
+    Byte CPU::nextByte(bool cycle) {
+        return memory.getByte(registers.programCounter + (Address)1, cycle);
+    }
+
+    Address CPU::nextAddress(bool cycle) {
+        return memory.getAddress(registers.programCounter + (Address)1, cycle);
     }
 
     bool CPU::isFlagSet(Nem::CPURegisters::StatusFlags flags) {
-        return (registers->status & flags) == flags;
+        return (registers.status & flags) == flags;
     }
 
     void CPU::clearFlags(Nem::CPURegisters::StatusFlags flags) {
-        registers->status &= ~flags;
+        registers.status &= ~flags;
     }
 
     void CPU::setFlags(Nem::CPURegisters::StatusFlags flags) {
-        registers->status |= flags;
+        registers.status |= flags;
     }
 
     void CPU::setFlags(bool condition, Nem::CPURegisters::StatusFlags flags) {
@@ -78,44 +92,41 @@ namespace Nem {
     Address stackLocation = 0x0100;
 
     void CPU::pushByte(Byte byte) {
-        memory->setByte(stackLocation + registers->stackPointer, byte);
-        registers->stackPointer--;
+        memory.setByte(stackLocation + registers.stackPointer, byte);
+        registers.stackPointer--;
     }
     void CPU::pushAddress(Address address) {
-        memory->setAddress(stackLocation + registers->stackPointer - (Address)1, address);
-        registers->stackPointer -= 2;
+        memory.setAddress(stackLocation + registers.stackPointer - (Address)1, address);
+        registers.stackPointer -= 2;
     }
     Byte CPU::popByte() {
-        registers->stackPointer++;
-        Byte byte = memory->getByte(stackLocation + registers->stackPointer);
+        registers.stackPointer++;
+        Byte byte = memory.getByte(stackLocation + registers.stackPointer);
         return byte;
     }
     Address CPU::popAddress() {
-        registers->stackPointer += 2;
-        Address address = memory->getAddress(stackLocation + registers->stackPointer - (Address)1);
+        registers.stackPointer += 2;
+        Address address = memory.getAddress(stackLocation + registers.stackPointer - (Address)1);
         return address;
     }
 
-    void CPU::setPPU(PPU* nPPU) { memory->setPPU(nPPU); }
-    void CPU::setAPU(APU *nAPU) { memory->setAPU(nAPU); }
-    void CPU::setController(int index, ControllerInterface* controller) { memory->setController(index, controller); }
+    void CPU::setPPU(PPU* nPPU) { memory.setPPU(nPPU); }
+    void CPU::setAPU(APU *nAPU) { memory.setAPU(nAPU); }
+    void CPU::setController(int index, ControllerInterface* controller) { memory.setController(index, controller); }
 
     void CPU::step() {
-        registers->programCounter++;
+        registers.programCounter++;
 
 #ifdef NEM_PROFILE
         profiler->analyzeStep();
 #endif
 
-        Byte opCode = memory->getByte(registers->programCounter);
-        Instruction instruction = opFunctions[opCode];
+        Byte opCode = memory.getByte(registers.programCounter);
+        AddressedInstruction instruction = opInstructions[opCode];
 
-        cycles = 2; // Fetch cycles.
-        int length = instruction(this);
+        int length = callAddressMode(instruction, opModes[opCode], this);
 
-        masterClock->waitUntilCPUReady(cycles);
-
-        registers->programCounter += length;
+        registers.programCounter += length - 1;
 
         processIRQ();
         processNMI();
@@ -129,12 +140,9 @@ namespace Nem {
         stopExecution = true;
     }
 
-    CPU::CPU(Clock* nMasterClock, Mapper* mapper) : masterClock(nMasterClock) {
-        memory = new CPUMemory(this, mapper);
-        registers = new CPURegisters();
-
-        registers->programCounter = CPU_ENTRY;
-        registers->programCounter--;
+    CPU::CPU(Clock* nMasterClock, Mapper* mapper) : masterClock(nMasterClock), memory(this, mapper) {
+        registers.programCounter = CPU_ENTRY;
+        registers.programCounter--;
 
 #ifdef NEM_PROFILE
         profiler = new Profiler(this);
@@ -144,9 +152,6 @@ namespace Nem {
     }
 
     CPU::~CPU() {
-        delete memory;
-        delete registers;
-
 #ifdef NEM_PROFILE
         delete profiler;
 #endif

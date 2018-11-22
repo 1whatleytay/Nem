@@ -38,8 +38,9 @@ namespace Nem {
             return { CPUMemoryRegion::PRGRom, address };
     }
 
-    Byte CPUMemory::getByte(Address address) {
+    Byte CPUMemory::getByte(Address address, bool cycle) {
         MappedAddress mappedAddress = mapAddress(address);
+        if (cycle) cpu->readCycle();
         switch (mappedAddress.region) {
             case WorkRam:
                 return workRam[mappedAddress.effectiveAddress - mappedAddress.region];
@@ -110,13 +111,13 @@ namespace Nem {
         return 0;
     }
 
-    Address CPUMemory::getAddress(Address address) {
-
-        return makeAddress(getByte(address), getByte(address + (Address)1));
+    Address CPUMemory::getAddress(Address address, bool cycle) {
+        return makeAddress(getByte(address, cycle), getByte(address + (Address)1, cycle));
     }
 
-    void CPUMemory::setByte(Address address, Byte value) {
+    void CPUMemory::setByte(Address address, Byte value, bool cycle) {
         MappedAddress mappedAddress = mapAddress(address);
+        if (cycle) cpu->writeCycle();
         switch (mappedAddress.region) {
             case WorkRam:
                 workRam[mappedAddress.effectiveAddress - mappedAddress.region] = value;
@@ -138,8 +139,10 @@ namespace Nem {
                         ppu->memory->edits.oam = true;
                         return;
                     case 0x2005:
-                        if (ppu->registers->scrollWrite) ppu->registers->scrollX = value;
-                        else ppu->registers->scrollY = value;
+                        if (value > 0) {
+                            if (ppu->registers->scrollWrite) ppu->registers->scrollX = value;
+                            else ppu->registers->scrollY = value;
+                        }
                         ppu->registers->scrollWrite = !ppu->registers->scrollWrite;
                         return;
                     case 0x2006:
@@ -211,10 +214,10 @@ namespace Nem {
         << " Value: " << (int)value << " Region: " << regionName(mappedAddress.region) << std::endl;
     }
 
-    void CPUMemory::setAddress(Address address, Address value) {
+    void CPUMemory::setAddress(Address address, Address value, bool cycle) {
         Byte loByte = lo(value), hiByte = hi(value);
-        setByte(address, loByte);
-        setByte(address + (Address)1, hiByte);
+        setByte(address, loByte, cycle);
+        setByte(address + (Address)1, hiByte, cycle);
     }
 
     void CPUMemory::list(Address start, Address count) {
