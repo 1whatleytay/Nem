@@ -34,15 +34,15 @@ namespace Nem {
     };
 
     struct ProfilerConfigPrintInstructions {
-        bool doProfile = true;
+        bool doProfile = false;
         bool binary = true;
-        string fileName = "/Users/desgroup/Desktop/nem.log.txt";
+        string fileName = "/Users/desgroup/Desktop/nem.log.dat";
         std::ofstream outFile;
     };
 
     struct ProfilerConfigTrail {
-        bool doProfile = false;
-        int trailLength = 1000;
+        bool doProfile = true;
+        int trailLength = 100;
         std::queue<DisInst> trailQueue;
         bool listMemory = false;
         int listBytesBefore = 20;

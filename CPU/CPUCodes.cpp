@@ -13,6 +13,8 @@
 #include <functional>
 #include <iostream>
 
+#define NO_READ(mode) (AddressMode)(mode | NoRead)
+
 namespace Nem {
     bool isNegative(Byte value) {
         return (value & 0b10000000) == 0b10000000;
@@ -57,7 +59,7 @@ namespace Nem {
         return makeAddress(a, b);
     }
 
-    void CMP(CPU *cpu, Byte reg, Byte value) {
+    void compare(CPU *cpu, Byte reg, Byte value) {
         cpu->setFlags(reg >= value, CPURegisters::StatusFlags::Carry);
         bool equal = reg == value;
         cpu->setFlags(equal, CPURegisters::StatusFlags::Zero);
@@ -65,97 +67,13 @@ namespace Nem {
         else checkNegative(cpu, reg - value);
     }
 
-    void INC(CPU *cpu, Address pointer) {
-        cpu->memory.setByte(pointer, cpu->memory.getByte(pointer) + (Byte) 1);
-        checkLow(cpu, cpu->memory.getByte(pointer));
-    }
-
-    void DEC(CPU *cpu, Address pointer) {
-        cpu->memory.setByte(pointer, cpu->memory.getByte(pointer) - (Byte) 1);
-        checkLow(cpu, cpu->memory.getByte(pointer));
-    }
-
-    void AND(CPU *cpu, Byte value) {
-        cpu->registers.accumulator &= value;
-        checkLow(cpu);
-    }
-
-    void ORA(CPU *cpu, Byte value) {
-        cpu->registers.accumulator |= value;
-        checkLow(cpu);
-    }
-
-    void EOR(CPU *cpu, Byte value) {
-        cpu->registers.accumulator ^= value;
-        checkLow(cpu);
-    }
-
-    void BIT(CPU *cpu, Byte value) {
+    void bitCompare(CPU *cpu, Byte value) {
         cpu->setFlags((cpu->registers.accumulator & value) == 0, CPURegisters::StatusFlags::Zero);
         cpu->setFlags((value & 0b01000000) > 0, CPURegisters::StatusFlags::Overflow);
         checkNegative(cpu, value);
     }
 
-    void ASL(CPU *cpu) {
-        cpu->setFlags(((int) cpu->registers.accumulator << 1) > 255, CPURegisters::StatusFlags::Carry);
-        cpu->registers.accumulator = cpu->registers.accumulator << 1;
-        checkLow(cpu);
-    }
-
-    void ASL(CPU *cpu, Address pointer) {
-        Byte value = cpu->memory.getByte(pointer);
-        cpu->setFlags(((int) value << 1) > 255, CPURegisters::StatusFlags::Carry);
-        cpu->memory.setByte(pointer, value << 1);
-        checkLow(cpu, value << 1);
-    }
-
-    void LSR(CPU *cpu) {
-        cpu->setFlags((cpu->registers.accumulator & 0b00000001) == 0b00000001, CPURegisters::StatusFlags::Carry);
-        cpu->registers.accumulator = cpu->registers.accumulator >> 1;
-        checkLow(cpu);
-    }
-
-    void LSR(CPU *cpu, Address pointer) {
-        Byte value = cpu->memory.getByte(pointer);
-        cpu->setFlags((value & 0b00000001) == 0b00000001, CPURegisters::StatusFlags::Carry);
-        cpu->memory.setByte(pointer, value >> 1);
-        checkLow(cpu, value >> 1);
-    }
-
-    void ROL(CPU *cpu) {
-        Byte bit0 = cpu->isFlagSet(CPURegisters::StatusFlags::Carry) ? (Byte) 0b00000001 : (Byte) 0b00000000;
-        cpu->setFlags((cpu->registers.accumulator & 0b10000000) == 0b10000000, CPURegisters::StatusFlags::Carry);
-        cpu->registers.accumulator = cpu->registers.accumulator << 1;
-        cpu->registers.accumulator |= bit0;
-        checkLow(cpu);
-    }
-
-    void ROL(CPU *cpu, Address pointer) {
-        Byte bit0 = cpu->isFlagSet(CPURegisters::StatusFlags::Carry) ? (Byte) 0b00000001 : (Byte) 0b00000000;
-        cpu->setFlags((cpu->memory.getByte(pointer) & 0b10000000) == 0b10000000,
-                      CPURegisters::StatusFlags::Carry);
-        cpu->memory.setByte(pointer, cpu->memory.getByte(pointer) << 1);
-        cpu->memory.setByte(pointer, cpu->memory.getByte(pointer) | bit0);
-        checkLow(cpu, cpu->memory.getByte(pointer));
-    }
-
-    void ROR(CPU *cpu) {
-        Byte bit7 = cpu->isFlagSet(CPURegisters::StatusFlags::Carry) ? (Byte) 0b10000000 : (Byte) 0b00000000;
-        cpu->setFlags((cpu->registers.accumulator & 0b00000001) == 0b00000001, CPURegisters::StatusFlags::Carry);
-        cpu->registers.accumulator = cpu->registers.accumulator >> 1;
-        cpu->registers.accumulator |= bit7;
-        checkLow(cpu);
-    }
-
-    void ROR(CPU *cpu, Address pointer) {
-        Byte bit7 = cpu->isFlagSet(CPURegisters::StatusFlags::Carry) ? (Byte) 0b10000000 : (Byte) 0b00000000;
-        cpu->setFlags((cpu->memory.getByte(pointer) & 0b00000001) == 0b00000001, CPURegisters::StatusFlags::Carry);
-        cpu->memory.setByte(pointer, cpu->memory.getByte(pointer) >> 1);
-        cpu->memory.setByte(pointer, cpu->memory.getByte(pointer) | bit7);
-        checkLow(cpu, cpu->memory.getByte(pointer));
-    }
-
-    bool unimplemented(CPU* cpu, AddressMode mode, InstArguments) {
+    bool unimplemented(CPU* cpu, AddressMode, InstArguments) {
         std::cout << "Instruction not implemented. PC: $" << makeHex(cpu->registers.programCounter)
                   << " INST: $" << makeHex(cpu->memory.getByte(cpu->registers.programCounter)) << std::endl;
 
@@ -190,130 +108,194 @@ namespace Nem {
         return true;
     }
 
-    bool incInstruction(CPU* cpu, AddressMode, InstArguments arguments) {
-        INC(cpu, arguments.pointer);
+    bool incInstruction(CPU* cpu, AddressMode mode, InstArguments arguments) {
+        if (mode == AbsoluteX && !arguments.skipped) cpu->readCycle();
+        //if (!arguments.faster) cpu->readCycle();
+        arguments.value++;
+        cpu->writeCycle();
+        cpu->memory.setByte(arguments.pointer, arguments.value);
+        checkLow(cpu, arguments.value);
         return true;
     }
 
-    bool decInstruction(CPU* cpu, AddressMode, InstArguments arguments) {
-        DEC(cpu, arguments.pointer);
+    bool decInstruction(CPU* cpu, AddressMode mode, InstArguments arguments) {
+        if (mode == AbsoluteX && !arguments.skipped) cpu->readCycle();
+        arguments.value--;
+        cpu->writeCycle();
+        cpu->memory.setByte(arguments.pointer, arguments.value);
+        checkLow(cpu, arguments.value);
         return true;
     }
 
     bool isbInstruction(CPU *cpu, AddressMode mode, InstArguments arguments) {
-        INC(cpu, arguments.pointer);
+        arguments.faster = true;
+        incInstruction(cpu, mode, arguments);
         arguments.value = cpu->memory.getByte(arguments.pointer, false);
         sbcInstruction(cpu, mode, arguments);
         return true;
     }
 
-    bool dcpInstruction(CPU* cpu, AddressMode, InstArguments arguments) {
-        DEC(cpu, arguments.pointer);
+    bool dcpInstruction(CPU* cpu, AddressMode mode, InstArguments arguments) {
+        arguments.faster = true;
+        decInstruction(cpu, mode, arguments);
         arguments.value = cpu->memory.getByte(arguments.pointer, false);
-        CMP(cpu, cpu->registers.accumulator, arguments.value);
+        compare(cpu, cpu->registers.accumulator, arguments.value);
         return true;
     }
 
     bool andInstruction(CPU* cpu, AddressMode, InstArguments arguments) {
-        AND(cpu, arguments.value);
+        cpu->registers.accumulator &= arguments.value;
+        checkLow(cpu);
         return true;
     }
 
     bool oraInstruction(CPU* cpu, AddressMode, InstArguments arguments) {
-        ORA(cpu, arguments.value);
+        cpu->registers.accumulator |= arguments.value;
+        checkLow(cpu);
         return true;
     }
 
     bool eorInstruction(CPU* cpu, AddressMode, InstArguments arguments) {
-        EOR(cpu, arguments.value);
+        cpu->registers.accumulator ^= arguments.value;
+        checkLow(cpu);
         return true;
     }
 
     bool bitInstruction(CPU* cpu, AddressMode, InstArguments arguments) {
-        BIT(cpu, arguments.value);
+        bitCompare(cpu, arguments.value);
         return true;
     }
 
-    bool cmpInstruction(CPU* cpu, AddressMode, InstArguments arguments) {
-        CMP(cpu, cpu->registers.accumulator, arguments.value);
+    bool cmpInstruction(CPU* cpu, AddressMode mode, InstArguments arguments) {
+        compare(cpu, cpu->registers.accumulator, arguments.value);
         return true;
     }
 
-    bool cpxInstruction(CPU* cpu, AddressMode, InstArguments arguments) {
-        CMP(cpu, cpu->registers.indexX, arguments.value);
+    bool cpxInstruction(CPU* cpu, AddressMode mode, InstArguments arguments) {
+        compare(cpu, cpu->registers.indexX, arguments.value);
         return true;
     }
 
-    bool cpyInstruction(CPU* cpu, AddressMode, InstArguments arguments) {
-        CMP(cpu, cpu->registers.indexY, arguments.value);
+    bool cpyInstruction(CPU* cpu, AddressMode mode, InstArguments arguments) {
+        compare(cpu, cpu->registers.indexY, arguments.value);
         return true;
     }
 
     bool aslInstruction(CPU* cpu, AddressMode mode, InstArguments arguments) {
-        if (mode == Implied) ASL(cpu);
-        else ASL(cpu, arguments.pointer);
+        if (mode == Implied) {
+            cpu->setFlags(((int) cpu->registers.accumulator << 1) > 255, CPURegisters::StatusFlags::Carry);
+            cpu->registers.accumulator = cpu->registers.accumulator << 1;
+            checkLow(cpu);
+        } else {
+            if (mode == AbsoluteX && !arguments.skipped) cpu->readCycle();
+            //if (!arguments.faster) cpu->readCycle();
+            cpu->setFlags((arguments.value & 0b10000000) == 0b10000000, CPURegisters::StatusFlags::Carry);
+            cpu->memory.setByte(arguments.pointer, arguments.value << 1);
+            cpu->writeCycle();
+            checkLow(cpu, arguments.value << 1);
+        }
         return true;
     }
 
     bool lsrInstruction(CPU* cpu, AddressMode mode, InstArguments arguments) {
-        if (mode == Implied) LSR(cpu);
-        else LSR(cpu, arguments.pointer);
+        if (mode == Implied) {
+            cpu->setFlags((cpu->registers.accumulator & 0b00000001) == 0b00000001, CPURegisters::StatusFlags::Carry);
+            cpu->registers.accumulator = cpu->registers.accumulator >> 1;
+            checkLow(cpu);
+        } else {
+            if (mode == AbsoluteX && !arguments.skipped) cpu->readCycle();
+            //if (!arguments.faster) cpu->readCycle();
+            cpu->setFlags((arguments.value & 0b00000001) == 0b00000001, CPURegisters::StatusFlags::Carry);
+            cpu->memory.setByte(arguments.pointer, arguments.value >> 1);
+            cpu->writeCycle();
+            checkLow(cpu, arguments.value >> 1);
+        }
         return true;
     }
 
     bool rolInstruction(CPU* cpu, AddressMode mode, InstArguments arguments) {
-        if (mode == Implied) ROL(cpu);
-        else ROL(cpu, arguments.pointer);
+        if (mode == Implied) {
+            Byte bit0 = cpu->isFlagSet(CPURegisters::StatusFlags::Carry) ? (Byte) 0b00000001 : (Byte) 0b00000000;
+            cpu->setFlags((cpu->registers.accumulator & 0b10000000) == 0b10000000, CPURegisters::StatusFlags::Carry);
+            cpu->registers.accumulator = (cpu->registers.accumulator << 1) | bit0;
+            checkLow(cpu);
+        } else {
+            if (mode == AbsoluteX && !arguments.skipped) cpu->readCycle();
+            //if (!arguments.faster) cpu->readCycle();
+            Byte bit0 = cpu->isFlagSet(CPURegisters::StatusFlags::Carry) ? (Byte) 0b00000001 : (Byte) 0b00000000;
+            cpu->setFlags((arguments.value & 0b10000000) == 0b10000000, CPURegisters::StatusFlags::Carry);
+            arguments.value = (arguments.value << 1) | bit0;
+            cpu->memory.setByte(arguments.pointer, arguments.value);
+            cpu->writeCycle();
+            checkLow(cpu, arguments.value);
+        }
         return true;
     }
 
     bool rorInstruction(CPU* cpu, AddressMode mode, InstArguments arguments) {
-        if (mode == Implied) ROR(cpu);
-        else ROR(cpu, arguments.pointer);
+        if (mode == Implied) {
+            Byte bit7 = cpu->isFlagSet(CPURegisters::StatusFlags::Carry) ? (Byte) 0b10000000 : (Byte) 0b00000000;
+            cpu->setFlags((cpu->registers.accumulator & 0b00000001) == 0b00000001, CPURegisters::StatusFlags::Carry);
+            cpu->registers.accumulator = (cpu->registers.accumulator >> 1) | bit7;
+            checkLow(cpu);
+        } else {
+            if (mode == AbsoluteX && !arguments.skipped) cpu->readCycle();
+            //if (!arguments.faster) cpu->readCycle();
+            Byte bit7 = cpu->isFlagSet(CPURegisters::StatusFlags::Carry) ? (Byte) 0b10000000 : (Byte) 0b00000000;
+            cpu->setFlags((arguments.value & 0b00000001) == 0b00000001, CPURegisters::StatusFlags::Carry);
+            arguments.value = (arguments.value >> 1) | bit7;
+            cpu->memory.setByte(arguments.pointer, arguments.value);
+            cpu->writeCycle();
+            checkLow(cpu, arguments.value);
+        }
         return true;
     }
 
-    bool sloInstruction(CPU* cpu, AddressMode, InstArguments arguments) {
-        ASL(cpu, arguments.pointer);
+    bool sloInstruction(CPU* cpu, AddressMode mode, InstArguments arguments) {
+        arguments.faster = true;
+        aslInstruction(cpu, mode, arguments);
         arguments.value = cpu->memory.getByte(arguments.pointer, false);
-        ORA(cpu, arguments.value);
+        oraInstruction(cpu, mode, arguments);
         return true;
     }
 
-    bool sreInstruction(CPU* cpu, AddressMode, InstArguments arguments) {
-        LSR(cpu, arguments.pointer);
+    bool sreInstruction(CPU* cpu, AddressMode mode, InstArguments arguments) {
+        arguments.faster = true;
+        lsrInstruction(cpu, mode, arguments);
         arguments.value = cpu->memory.getByte(arguments.pointer, false);
-        EOR(cpu, arguments.value);
+        eorInstruction(cpu, mode, arguments);
         return true;
     }
 
-    bool rlaInstruction(CPU* cpu, AddressMode, InstArguments arguments) {
-        ROL(cpu, arguments.pointer);
+    bool rlaInstruction(CPU* cpu, AddressMode mode, InstArguments arguments) {
+        arguments.faster = true;
+        rolInstruction(cpu, mode, arguments);
         arguments.value = cpu->memory.getByte(arguments.pointer, false);
-        AND(cpu, arguments.value);
+        andInstruction(cpu, mode, arguments);
         return true;
     }
 
     bool rraInstruction(CPU* cpu, AddressMode mode, InstArguments arguments) {
-        ROR(cpu, arguments.pointer);
+        arguments.faster = true;
+        rorInstruction(cpu, mode, arguments);
         arguments.value = cpu->memory.getByte(arguments.pointer, false);
         adcInstruction(cpu, mode, arguments);
         return true;
     }
 
-    bool alrInstruction(CPU* cpu, AddressMode, InstArguments arguments) {
-        AND(cpu, arguments.value);
-        LSR(cpu);
+    bool alrInstruction(CPU* cpu, AddressMode mode, InstArguments arguments) {
+        andInstruction(cpu, mode, arguments);
+        lsrInstruction(cpu, Implied, arguments);
         return true;
     }
-    bool ancInstruction(CPU* cpu, AddressMode, InstArguments arguments) {
-        AND(cpu, arguments.value);
+    bool ancInstruction(CPU* cpu, AddressMode mode, InstArguments arguments) {
+        andInstruction(cpu, mode, arguments);
         cpu->setFlags(cpu->isFlagSet(CPURegisters::StatusFlags::Negative), CPURegisters::StatusFlags::Carry);
         return true;
     }
-    bool arrInstruction(CPU* cpu, AddressMode, InstArguments arguments) {
-        AND(cpu, arguments.value);
-        ROR(cpu);
+    bool arrInstruction(CPU* cpu, AddressMode mode, InstArguments arguments) {
+        andInstruction(cpu, mode, arguments);
+        rorInstruction(cpu, Implied, arguments);
         bool bit6 = (cpu->registers.accumulator & 0b01000000) == 0b01000000;
         bool bit5 = (cpu->registers.accumulator & 0b00100000) == 0b00100000;
         cpu->setFlags(bit6, CPURegisters::StatusFlags::Carry);
@@ -366,8 +348,9 @@ namespace Nem {
             default: break;
         }
         if (cpu->isFlagSet(flags) == req) {
+            cpu->readCycle();
             short value = makeSigned(arguments.value);
-            if (skippedPage(cpu->registers.programCounter + (Address)2, arguments.value)) cpu->readCycle();
+            if (skippedPage(cpu->registers.programCounter + (Address)2, value)) cpu->readCycle();
             cpu->registers.programCounter += value;
         }
         return true;
@@ -398,6 +381,7 @@ namespace Nem {
     bool rtiInstruction(CPU* cpu, AddressMode, InstArguments) {
         cpu->registers.status = (Byte) (cpu->popByte() | 0b00100000);
         Address pointer = cpu->popAddress();
+        cpu->writeCycle();
         cpu->registers.programCounter = pointer;
 #ifdef RTI_MINUS_ONE
         cpu->registers.programCounter--;
@@ -407,6 +391,7 @@ namespace Nem {
 
     bool jsrInstruction(CPU* cpu, AddressMode, InstArguments arguments) {
         cpu->pushAddress(cpu->registers.programCounter + (Address) 2);
+        cpu->writeCycle();
         cpu->registers.programCounter = arguments.pointer;
         cpu->registers.programCounter--;
         return false;
@@ -414,6 +399,7 @@ namespace Nem {
 
     bool rtsInstruction(CPU* cpu, AddressMode, InstArguments) {
         Address address = cpu->popAddress();
+        cpu->readCycle(); cpu->writeCycle();
         cpu->registers.programCounter = address;
         return false;
     }
@@ -484,7 +470,7 @@ namespace Nem {
         return true;
     }
 
-    bool laxInstruction(CPU* cpu, AddressMode, InstArguments arguments) {
+    bool laxInstruction(CPU* cpu, AddressMode mode, InstArguments arguments) {
         cpu->registers.accumulator = arguments.value;
         cpu->registers.indexX = arguments.value;
         checkLow(cpu);
@@ -492,16 +478,19 @@ namespace Nem {
     }
 
     bool staInstruction(CPU* cpu, AddressMode mode, InstArguments arguments) {
+        if ((mode == AbsoluteX ||
+            mode == AbsoluteY ||
+            mode == IndirectY) && !arguments.skipped) cpu->readCycle();
         cpu->memory.setByte(arguments.pointer, cpu->registers.accumulator);
         return true;
     }
 
-    bool stxInstruction(CPU* cpu, AddressMode mode, InstArguments arguments) {
+    bool stxInstruction(CPU* cpu, AddressMode, InstArguments arguments) {
         cpu->memory.setByte(arguments.pointer, cpu->registers.indexX);
         return true;
     }
 
-    bool styInstruction(CPU* cpu, AddressMode mode, InstArguments arguments) {
+    bool styInstruction(CPU* cpu, AddressMode, InstArguments arguments) {
         cpu->memory.setByte(arguments.pointer, cpu->registers.indexY);
         return true;
     }
@@ -529,6 +518,7 @@ namespace Nem {
 
     bool plaInstruction(CPU* cpu, AddressMode, InstArguments) {
         cpu->registers.accumulator = cpu->popByte();
+        cpu->writeCycle();
         checkLow(cpu);
         return true;
     }
@@ -540,56 +530,62 @@ namespace Nem {
 
     bool plpInstruction(CPU* cpu, AddressMode, InstArguments) {
         cpu->registers.status = (Byte) ((cpu->popByte() & ~0b00010000) | 0b00100000);
+        cpu->writeCycle();
         return true;
     }
 
     int callAddressMode(AddressedInstruction& inst, AddressMode mode, CPU* cpu) {
-        InstArguments arguments = { 0, 0, false };
+        InstArguments arguments = { 0, 0, false, false };
+        bool read = (mode & NoRead) != NoRead;
+        mode = (AddressMode)(mode & 0b00001111);
         int length = addressModeLengths[mode];
         Byte next = 0;
         Address nextA = 0;
-        if (length == 2) next = cpu->nextByte();
-        else if (length == 3) nextA = cpu->nextAddress();
+        if (length <= 2) next = cpu->nextByte();
+        else if (length >= 3) nextA = cpu->nextAddress();
         switch (mode) {
             case Implied: break;
             case Immediate:
                 arguments.value = next;
                 break;
             case ZeroPage:
-                arguments.value = cpu->memory.getByte((Address)next);
+                if (read) arguments.value = cpu->memory.getByte((Address)next);
                 arguments.pointer = (Address)next;
                 break;
             case ZeroPageX:
                 arguments.pointer = onPage((Address)next + cpu->readCycle(cpu->registers.indexX));
-                arguments.value = cpu->memory.getByte(arguments.pointer);
+                if (read) arguments.value = cpu->memory.getByte(arguments.pointer);
                 break;
             case ZeroPageY:
                 arguments.pointer = onPage((Address)next + cpu->readCycle(cpu->registers.indexY));
-                arguments.value = cpu->memory.getByte(arguments.pointer);
+                if (read) arguments.value = cpu->memory.getByte(arguments.pointer);
                 break;
             case Absolute:
-                arguments.value = cpu->memory.getByte(nextA);
+                if (read) arguments.value = cpu->memory.getByte(nextA);
                 arguments.pointer = nextA;
                 break;
             case AbsoluteX:
-                arguments.value = cpu->memory.getByte(nextA + cpu->registers.indexX);
-                arguments.pointer = nextA + cpu->registers.indexX;
+                arguments.pointer = nextA;
                 if (skippedPage(arguments.pointer, cpu->registers.indexX)) {
                     cpu->readCycle();
                     arguments.skipped = true;
                 }
+                arguments.pointer += cpu->registers.indexX;
+                if (read) arguments.value = cpu->memory.getByte(arguments.pointer);
                 break;
             case AbsoluteY:
-                arguments.value = cpu->memory.getByte(nextA + cpu->registers.indexY);
-                arguments.pointer = nextA + cpu->registers.indexY;
+                arguments.pointer = nextA;
                 if (skippedPage(arguments.pointer, cpu->registers.indexY)) {
                     cpu->readCycle();
                     arguments.skipped = true;
                 }
+                arguments.pointer += cpu->registers.indexY;
+                if (read) arguments.value = cpu->memory.getByte(arguments.pointer);
                 break;
             case IndirectX:
-                arguments.pointer = getAddressOnPage(cpu, (Address)next + cpu->readCycle(cpu->registers.indexX));
-                arguments.value = cpu->memory.getByte(arguments.pointer);
+                cpu->readCycle();
+                arguments.pointer = getAddressOnPage(cpu, (Address)next + cpu->registers.indexX);
+                if (read) arguments.value = cpu->memory.getByte(arguments.pointer);
                 break;
             case IndirectY:
                 arguments.pointer = getAddressOnPage(cpu, (Address)next);
@@ -598,7 +594,7 @@ namespace Nem {
                     arguments.skipped = true;
                 }
                 arguments.pointer += cpu->registers.indexY;
-                arguments.value = cpu->memory.getByte(arguments.pointer);
+                if (read) arguments.value = cpu->memory.getByte(arguments.pointer);
                 break;
             case IndirectAbsolute:
                 arguments.pointer = getAddressOnPage(cpu, nextA, hi(nextA));
@@ -1168,7 +1164,7 @@ namespace Nem {
         AbsoluteX, // MODE 0x1D
         AbsoluteX, // MODE 0x1E
         AbsoluteX, // MODE 0x1F
-        Absolute, // MODE 0x20
+        NO_READ(Absolute), // MODE 0x20
         IndirectX, // MODE 0x21
         Implied, // MODE 0x22
         IndirectX, // MODE 0x23
@@ -1212,7 +1208,7 @@ namespace Nem {
         Immediate, // MODE 0x49
         Implied, // MODE 0x4A
         Immediate, // MODE 0x4B
-        Absolute, // MODE 0x4C
+        NO_READ(Absolute), // MODE 0x4C
         Absolute, // MODE 0x4D
         Absolute, // MODE 0x4E
         Absolute, // MODE 0x4F
@@ -1244,7 +1240,7 @@ namespace Nem {
         Immediate, // MODE 0x69
         Implied, // MODE 0x6A
         Immediate, // MODE 0x6B
-        IndirectAbsolute, // MODE 0x6C
+        NO_READ(IndirectAbsolute), // MODE 0x6C
         Absolute, // MODE 0x6D
         Absolute, // MODE 0x6E
         Absolute, // MODE 0x6F
@@ -1265,35 +1261,35 @@ namespace Nem {
         AbsoluteX, // MODE 0x7E
         AbsoluteX, // MODE 0x7F
         Immediate, // MODE 0x80
-        IndirectX, // MODE 0x81
+        NO_READ(IndirectX), // MODE 0x81
         Immediate, // MODE 0x82
-        IndirectX, // MODE 0x83
-        ZeroPage, // MODE 0x84
-        ZeroPage, // MODE 0x85
-        ZeroPage, // MODE 0x86
-        ZeroPage, // MODE 0x87
+        NO_READ(IndirectX), // MODE 0x83
+        NO_READ(ZeroPage), // MODE 0x84
+        NO_READ(ZeroPage), // MODE 0x85
+        NO_READ(ZeroPage), // MODE 0x86
+        NO_READ(ZeroPage), // MODE 0x87
         Implied, // MODE 0x88
         Immediate, // MODE 0x89
         Implied, // MODE 0x8A
         Unknown, // MODE 0x8B
-        Absolute, // MODE 0x8C
-        Absolute, // MODE 0x8D
-        Absolute, // MODE 0x8E
-        Absolute, // MODE 0x8F
+        NO_READ(Absolute), // MODE 0x8C
+        NO_READ(Absolute), // MODE 0x8D
+        NO_READ(Absolute), // MODE 0x8E
+        NO_READ(Absolute), // MODE 0x8F
         Relative, // MODE 0x90
-        IndirectY, // MODE 0x91
+        NO_READ(IndirectY), // MODE 0x91
         Implied, // MODE 0x92
         Unknown, // MODE 0x93
-        ZeroPageX, // MODE 0x94
-        ZeroPageX, // MODE 0x95
-        ZeroPageY, // MODE 0x96
-        ZeroPageY, // MODE 0x97
+        NO_READ(ZeroPageX), // MODE 0x94
+        NO_READ(ZeroPageX), // MODE 0x95
+        NO_READ(ZeroPageY), // MODE 0x96
+        NO_READ(ZeroPageY), // MODE 0x97
         Implied, // MODE 0x98
-        AbsoluteY, // MODE 0x99
+        NO_READ(AbsoluteY), // MODE 0x99
         Implied, // MODE 0x9A
         Unknown, // MODE 0x9B
         Unknown, // MODE 0x9C
-        AbsoluteX, // MODE 0x9D
+        NO_READ(AbsoluteX), // MODE 0x9D
         Unknown, // MODE 0x9E
         Unknown, // MODE 0x9F
         Immediate, // MODE 0xA0

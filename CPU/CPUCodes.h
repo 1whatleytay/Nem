@@ -16,6 +16,7 @@ namespace Nem {
         Byte value;
         Address pointer;
         bool skipped;
+        bool faster;
     };
 
     enum AddressMode {
@@ -33,9 +34,9 @@ namespace Nem {
         Relative,
         Unknown,
         AddressModeCount,
+        NoRead = 0b10000000,
     };
 
-    typedef std::function<int(CPU*)> Instruction;
     typedef std::function<bool(CPU* cpu, AddressMode mode, InstArguments arguments)> AddressedInstruction;
 
     int callAddressMode(AddressedInstruction& inst, AddressMode mode, CPU* cpu);

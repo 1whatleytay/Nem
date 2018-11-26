@@ -9,6 +9,10 @@
 #include "../Errors.h"
 #include "../APU/APU.h"
 
+#ifdef NEM_PROFILE
+#include "../Debug/Profiler.h"
+#endif
+
 #include <iostream>
 
 namespace Nem {
@@ -108,6 +112,11 @@ namespace Nem {
         }
         std::cout << "Read @ $" << makeHex(address) << " is unimplemented!"
         << " Region: " << regionName(mappedAddress.region) << std::endl;
+
+#ifdef NEM_PROFILE
+        cpu->profiler->breakpoint();
+#endif
+
         return 0;
     }
 
@@ -212,6 +221,10 @@ namespace Nem {
         }
         std::cout << "Write @ $" << makeHex(address) << " is unimplemented!"
         << " Value: " << (int)value << " Region: " << regionName(mappedAddress.region) << std::endl;
+
+#ifdef NEM_PROFILE
+        cpu->profiler->breakpoint();
+#endif
     }
 
     void CPUMemory::setAddress(Address address, Address value, bool cycle) {
