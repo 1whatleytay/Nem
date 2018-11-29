@@ -40,8 +40,8 @@ namespace Nem {
 
     InstInfo::InstInfo(Byte instruction) {
         code = instruction;
-        name = opNames[instruction];
-        mode = opModes[instruction];
+        name = opInstructions[instruction].name;
+        mode = opInstructions[instruction].mode;
         length = addressModeLengths[mode];
     }
 

@@ -2,28 +2,24 @@
 // Created by Taylor Whatley on 2018-10-06.
 //
 
-#ifndef NEM_DISPLAY_H
-#define NEM_DISPLAY_H
+#ifndef NEM_APP_H
+#define NEM_APP_H
 
 #include "../Controller/Controller.h"
 #include "../Emulator.h"
 
-#ifndef CPU_ONLY
+#include "../Util/Stopwatch.h"
+
 #define GLFW_INCLUDE_GLCOREARB
 #include <GLFW/glfw3.h>
 
-#ifndef NO_AUDIO
 #include <OpenAL/al.h>
 #include <OpenAL/alc.h>
-#endif
-#endif
 
 #include <thread>
 #include <unordered_map>
 
 namespace Nem {
-#ifndef CPU_ONLY
-#ifndef NO_AUDIO
     class Audio {
         APU* apu;
 
@@ -45,7 +41,6 @@ namespace Nem {
         explicit Audio(APU* nApu);
         ~Audio();
     };
-#endif
 
     class Display {
         PPU* ppu;
@@ -65,6 +60,14 @@ namespace Nem {
         GLint uniformSprPatternSampler, uniformSprPaletteSampler, uniformSprOAMSampler;
         GLint uniformSprPatternTableDrawIndex;
 
+        Stopwatch stopwatch;
+
+        long long scanlineId = 0;
+        long long lastScanline = 0;
+        long long frame = 0;
+
+        Clock* clock = nullptr;
+
         vector<GLuint> makePatternData(PPU *ppu);
         vector<GLuint> makeNameTableData(PPU* ppu);
         vector<GLuint> makeOAMData(PPU* ppu);
@@ -81,8 +84,8 @@ namespace Nem {
         void checkEdits();
 
         bool init();
-        void render();
-        void loop();
+        //void render();
+        //void loop();
         void close();
     public:
         EditController mainController;
@@ -92,32 +95,26 @@ namespace Nem {
 
         void keyInput(int key, int action);
 
-        void exec();
+        void nextTick(long long tick);
 
-        explicit Display(PPU* nPpu, string title = "Nemulator");
+        explicit Display(Clock* nClock, PPU* nPpu, string title = "Nemulator");
         ~Display();
     };
-#endif
 
     class App : private Emulator {
-#ifndef CPU_ONLY
         Display* display = nullptr;
-#ifndef NO_AUDIO
         Audio* audio = nullptr;
-#endif
-#endif
 
         std::thread* cpuThread = nullptr;
-        std::thread* ppuThread = nullptr;
         std::thread* audioThread = nullptr;
 
         void loadBindings();
     public:
         void exec();
 
-        App(string pathToRom);
+        explicit App(string pathToRom);
         ~App();
     };
 }
 
-#endif //NEM_DISPLAY_H
+#endif //NEM_APP_H

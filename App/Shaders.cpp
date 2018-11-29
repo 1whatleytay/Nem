@@ -9,8 +9,6 @@
 #include <fstream>
 #include <iostream>
 
-#ifndef CPU_ONLY
-
 namespace Nem {
     const int spriteCount = 0x2000 / 16;
 
@@ -241,4 +239,3 @@ namespace Nem {
         glUniform1i(uniformSprOAMSampler, 3);
     }
 }
-#endif

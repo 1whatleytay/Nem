@@ -4,8 +4,6 @@
 
 #include "App.h"
 
-#ifndef CPU_ONLY
-#ifndef NO_AUDIO
 namespace Nem {
     bool Audio::init() {
         alcMakeContextCurrent(context);
@@ -57,5 +55,3 @@ namespace Nem {
         alcCloseDevice(device);
     }
 }
-#endif
-#endif

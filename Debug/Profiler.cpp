@@ -91,9 +91,10 @@ namespace Nem {
 #endif
 
     void Profiler::breakpoint() {
-        if (!config.doProfile) return;
+        if (!config.doProfile || noBreakpoint) return;
 
-        std::cout << "[Profiler Detected Breakpoint]" << std::endl;
+        std::cout << "[Profiler Breakpoint @" << makeHex(cpu->registers.programCounter) << "]" << std::endl;
+
         if (config.trail.doProfile) {
             std::cout << "[Profiler Trail]" << std::endl;
             while (!config.trail.trailQueue.empty()) {
@@ -113,6 +114,7 @@ namespace Nem {
     void Profiler::analyzeStep() {
         if (!config.doProfile) return;
 
+        noBreakpoint = true;
         Byte fetch[3];
         for (Address a = 0; a < 3; a++) fetch[a] = cpu->memory.getByte(cpu->registers.programCounter + a, false);
 
@@ -135,7 +137,7 @@ namespace Nem {
         }
 
 #ifdef NEM_PROFILE_ANALYSIS_FLAG
-    if (!getDebugFlag("profiler-execution-analysis")) return;
+        if (!getDebugFlag("profiler-execution-analysis")) return;
         std::cout << "BAWDSFAS" << std::endl;
 #endif
 
@@ -146,6 +148,7 @@ namespace Nem {
 #else
         executionAnalysis(inst);
 #endif
+        noBreakpoint = false;
     }
 
     Profiler::Profiler(Nem::CPU *nCpu) : cpu(nCpu) {

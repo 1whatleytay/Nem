@@ -11,6 +11,7 @@
 #endif
 
 #include <iostream>
+#include <thread>
 #include <unordered_map>
 
 #ifndef CPU_ENTRY
@@ -29,17 +30,25 @@ namespace Nem {
         return debugCPU->registers.programCounter;
     }
 
-    void CPU::waitCycles(long long cycles) { masterClock->waitUntilCPUReady(cycles); }
+    void CPU::clockCycle(long long tick) {
+        waiting = false;
+        if (tick == -1) stopExecution = true;
+    }
 
-    void CPU::readCycle() {
-        cycles++;
-        waitCycles(1);
+    void CPU::waitCycle() {
+        if (stopExecution) return;
+
+        waiting = true;
+
+        while (waiting) {
+#ifdef YIELD_ON_TICK
+            std::this_thread::yield();
+#endif
+        }
     }
-    Byte CPU::readCycle(Byte value) { readCycle(); return value; }
-    void CPU::writeCycle() {
-        cycles++;
-        waitCycles(1);
-    }
+
+    void CPU::readCycle() { waitCycle(); cycles++; }
+    void CPU::writeCycle() { waitCycle(); cycles++; }
 
     void CPU::processIRQ() {
         if (irq) {
@@ -122,9 +131,8 @@ namespace Nem {
 #endif
 
         Byte opCode = memory.getByte(registers.programCounter);
-        AddressedInstruction instruction = opInstructions[opCode];
 
-        int length = callAddressMode(instruction, opModes[opCode], this);
+        int length = callInstruction(opInstructions[opCode], this);
 
         registers.programCounter += length - 1;
 
@@ -133,14 +141,13 @@ namespace Nem {
     }
 
     void CPU::exec() {
-        masterClock->startCPU();
         while (!stopExecution) { step(); }
     }
     void CPU::stopExec() {
         stopExecution = true;
     }
 
-    CPU::CPU(Clock* nMasterClock, Mapper* mapper) : masterClock(nMasterClock), memory(this, mapper) {
+    CPU::CPU(Mapper* mapper) : memory(this, mapper) {
         registers.programCounter = CPU_ENTRY;
         registers.programCounter--;
 

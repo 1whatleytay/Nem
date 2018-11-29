@@ -16,7 +16,6 @@ namespace Nem {
         Byte value;
         Address pointer;
         bool skipped;
-        bool faster;
     };
 
     enum AddressMode {
@@ -38,12 +37,16 @@ namespace Nem {
     };
 
     typedef std::function<bool(CPU* cpu, AddressMode mode, InstArguments arguments)> AddressedInstruction;
+    struct Instruction {
+        AddressedInstruction function;
+        string name;
+        AddressMode mode;
+    };
 
-    int callAddressMode(AddressedInstruction& inst, AddressMode mode, CPU* cpu);
+    int callInstruction(Instruction &inst, CPU *cpu);
 
-    extern AddressedInstruction opInstructions[256];
-    extern string opNames[256];
-    extern AddressMode opModes[256];
+    extern Instruction opInstructions[256];
+
     extern int addressModeLengths[AddressModeCount];
     extern string addressModeNames[AddressModeCount];
     extern string addressModeShorts[AddressModeCount];

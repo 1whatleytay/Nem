@@ -39,7 +39,7 @@ namespace Nem {
         ROM* rom = nullptr;
         Mapper* mapper = nullptr;
 
-        Clock* masterClock = nullptr;
+        Clock* clock = nullptr;
 
         CPU* cpu = nullptr;
         PPU* ppu = nullptr;

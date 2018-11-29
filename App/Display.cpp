@@ -8,7 +8,6 @@
 #include "../PPU/PPU.h"
 #include "../Util/Clock.h"
 
-#ifndef CPU_ONLY
 #include <GLFW/glfw3.h>
 
 #include <iostream>
@@ -87,47 +86,43 @@ namespace Nem {
         refreshPaletteRam();
 
         forceShow();
+
+        stopwatch.start();
+
         return true;
     }
 
-    void Display::render() {
-        glClear(GL_COLOR_BUFFER_BIT);
-
-        GLenum error = glGetError();
-        if (error != GL_NO_ERROR) std::cout << "OpenGL Error: " << error << std::endl;
-
-        if (ppu->isControlSet(PPURegisters::ControlFlags::SprSize)) {
-            std::cout << "Sprite Size 8x16 is unsupported." << std::endl;
-        }
-
-        if (ppu->isMaskSet(PPURegisters::MaskFlags::ShowBKG)) {
-            glUseProgram(backgroundProgram);
-
-            glUniform1i(uniformBkgPatternTableDrawIndex,
-                        ppu->isControlSet(PPURegisters::ControlFlags::BkgPatternTable));
-
-//            int baseNameTable = ppu->memory->getNameTableByIndex(
-//                    ppu->registers->control & PPURegisters::ControlFlags::NameTable);
-
-            //int val = (int)ppu->registers->scrollX;
-            int val = 0;
-            glUniform1i(uniformBkgScrollX, val);
-            glUniform1i(uniformBkgNameTableDrawIndex, 0);
-            glDrawArrays(GL_TRIANGLES, 0, 30 * 32 * 6);
-//            glUniform1i(uniformBkgScrollX, val - 256);
-//            glUniform1i(uniformBkgNameTableDrawIndex, !baseNameTable);
+//    void Display::render() {
+//        glClear(GL_COLOR_BUFFER_BIT);
+//
+//        GLenum error = glGetError();
+//        if (error != GL_NO_ERROR) std::cout << "OpenGL Error: " << error << std::endl;
+//
+//        if (ppu->isControlSet(PPURegisters::ControlFlags::SprSize)) {
+//            std::cout << "Sprite Size 8x16 is unsupported." << std::endl;
+//        }
+//
+//        if (ppu->isMaskSet(PPURegisters::MaskFlags::ShowBKG)) {
+//            glUseProgram(backgroundProgram);
+//
+//            glUniform1i(uniformBkgPatternTableDrawIndex,
+//                        ppu->isControlSet(PPURegisters::ControlFlags::BkgPatternTable));
+//
+//            int val = 0;
+//            glUniform1i(uniformBkgScrollX, val);
+//            glUniform1i(uniformBkgNameTableDrawIndex, 0);
 //            glDrawArrays(GL_TRIANGLES, 0, 30 * 32 * 6);
-        }
-
-        if (ppu->isMaskSet(PPURegisters::MaskFlags::ShowSPR)) {
-            glUseProgram(spriteProgram);
-
-            glUniform1i(uniformSprPatternTableDrawIndex,
-                        ppu->isControlSet(PPURegisters::ControlFlags::SprPatternTable));
-
-            glDrawArrays(GL_TRIANGLES, 0, 64 * 6);
-        }
-    }
+//        }
+//
+//        if (ppu->isMaskSet(PPURegisters::MaskFlags::ShowSPR)) {
+//            glUseProgram(spriteProgram);
+//
+//            glUniform1i(uniformSprPatternTableDrawIndex,
+//                        ppu->isControlSet(PPURegisters::ControlFlags::SprPatternTable));
+//
+//            glDrawArrays(GL_TRIANGLES, 0, 64 * 6);
+//        }
+//    }
 
     void Display::keyInput(int key, int action) {
         if (key == GLFW_KEY_K || action == GLFW_PRESS)
@@ -141,28 +136,28 @@ namespace Nem {
         }
     }
 
-    void Display::loop() {
-        ppu->start();
-        while (!glfwWindowShouldClose(window)) {
-            glfwPollEvents();
-
-            ppu->registers->status |= PPURegisters::StatusFlags::SprZeroHit;
-
-            checkEdits();
-            render();
-            glfwSwapBuffers(window);
-
-            ppu->waitCycles(240 * 341);
-            ppu->registers->status &= ~PPURegisters::StatusFlags::SprZeroHit;
-
-            if (ppu->isControlSet(PPURegisters::ControlFlags::VBlankNMI)) ppu->postNMI();
-            ppu->registers->status |= PPURegisters::StatusFlags::VBlankStart;
-            ppu->waitCycles(22 * 341);
-            ppu->registers->status &= ~PPURegisters::StatusFlags::VBlankStart;
-
-            ppu->oddFrame = !ppu->oddFrame;
-        }
-    }
+//    void Display::loop() {
+//        ppu->start();
+//        while (!glfwWindowShouldClose(window)) {
+//            glfwPollEvents();
+//
+//            ppu->registers->status |= PPURegisters::StatusFlags::SprZeroHit;
+//
+//            checkEdits();
+//            render();
+//            glfwSwapBuffers(window);
+//
+//            ppu->waitCycles(240 * 341);
+//            ppu->registers->status &= ~PPURegisters::StatusFlags::SprZeroHit;
+//
+//            if (ppu->isControlSet(PPURegisters::ControlFlags::VBlankNMI)) ppu->postNMI();
+//            ppu->registers->status |= PPURegisters::StatusFlags::VBlank;
+//            ppu->waitCycles(22 * 341);
+//            ppu->registers->status &= ~PPURegisters::StatusFlags::VBlank;
+//
+//            ppu->oddFrame = !ppu->oddFrame;
+//        }
+//    }
 
     void Display::close() {
         glDeleteTextures(1, &oamTexture);
@@ -177,12 +172,68 @@ namespace Nem {
         glDeleteProgram(backgroundProgram);
     }
 
-    void Display::exec() {
-        if (init()) loop();
-        close();
+//    void Display::exec() {
+//        if (init()) loop();
+//        close();
+//    }
+    long long lastFrame = 0;
+
+    void Display::nextTick(long long cTick) {
+        if (cTick == -1) return;
+        long long tick = cTick - lastScanline;
+
+        if (scanlineId == 0 && tick == 0) {
+            std::cout << "Lapping and polling." << std::endl;
+            if (stopwatch.hasBeen(1000)) {
+                stopwatch.stop();
+                std::cout << "FPS: " << frame - lastFrame << std::endl;
+                lastFrame = frame;
+                stopwatch.start();
+            }
+            glfwPollEvents();
+            if (glfwWindowShouldClose(window)) clock->stopExec();
+            if (ppu->isMaskSet(PPURegisters::MaskFlags::ShowBKG) && frame % 2 == 1) tick++;
+        }
+
+        if (scanlineId >= 0 && scanlineId <= 239) {
+            checkEdits();
+            if (ppu->isMaskSet(PPURegisters::MaskFlags::ShowBKG) && scanlineId % 8 == 0) {
+                glUseProgram(backgroundProgram);
+                glUniform1i(uniformBkgPatternTableDrawIndex,
+                    ppu->isControlSet(PPURegisters::ControlFlags::BkgPatternTable));
+                glDrawArrays(GL_TRIANGLES, (GLint)scanlineId / 8 * 32 * 6, 30 * 32 * 6);
+            }
+            if (ppu->isMaskSet(PPURegisters::MaskFlags::ShowSPR) && scanlineId == 239 && tick == 340) {
+                glUseProgram(spriteProgram);
+                glUniform1i(uniformSprPatternTableDrawIndex,
+                    ppu->isControlSet(PPURegisters::ControlFlags::SprPatternTable));
+                glDrawArrays(GL_TRIANGLES, 0, 64 * 6);
+            }
+        }
+        if (scanlineId >= 240 && scanlineId <= 261) {
+            if (scanlineId == 241 && tick == 1) {
+                ppu->registers->status |= PPURegisters::StatusFlags::VBlank;
+                if (ppu->isControlSet(PPURegisters::ControlFlags::VBlankNMI)) ppu->postNMI();
+                glfwSwapBuffers(window);
+                glClear(GL_COLOR_BUFFER_BIT);
+            }
+            if (scanlineId == 261) {
+                ppu->registers->status &= ~PPURegisters::StatusFlags::SprOverflow;
+                ppu->registers->status &= ~PPURegisters::StatusFlags::VBlank;
+                ppu->registers->status &= ~PPURegisters::StatusFlags::SprZeroHit;
+            }
+        }
+        if (tick >= 340) {
+            if (scanlineId >= 261) {
+                frame++;
+            }
+            lastScanline = cTick + 1;
+            scanlineId++;
+            scanlineId = scanlineId % 262;
+        }
     }
 
-    Display::Display(PPU* nPpu, string title) : ppu(nPpu) {
+    Display::Display(Clock* nClock, PPU* nPpu, string title) : clock(nClock), ppu(nPpu) {
         if (!glfwInit()) throw CouldNotCreateWindowException();
 
         glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, true);
@@ -202,11 +253,13 @@ namespace Nem {
 
         glfwMakeContextCurrent(window);
         glfwSwapInterval(0);
+
+        init();
     }
 
     Display::~Display() {
+        close();
         glfwDestroyWindow(window);
         glfwTerminate();
     }
 }
-#endif

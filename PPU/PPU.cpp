@@ -18,17 +18,11 @@ namespace Nem {
         return (registers->mask & flags) == flags;
     }
 
-    void PPU::waitCycles(long long cycles) {
-        masterClock->waitUntilPPUReady(cycles);
-    };
-
-    void PPU::start() { masterClock->startPPU(); }
-
     void PPU::postNMI() { cpu->postNMI(); }
 
     void PPU::setCPU(Nem::CPU* nCPU) { cpu = nCPU; }
 
-    PPU::PPU(Clock* nMasterClock, Mapper* mapper) : masterClock(nMasterClock) {
+    PPU::PPU(Mapper* mapper) {
         memory = new PPUMemory(mapper);
         registers = new PPURegisters();
     }

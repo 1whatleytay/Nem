@@ -5,9 +5,9 @@
 #ifndef NEM_CPU_H
 #define NEM_CPU_H
 
-#define CPU_ENTRY 0xc000
-#define RTI_MINUS_ONE
-//#define FORCE_SPRITE_ZERO_HIT
+//#define CPU_ENTRY 0xc000
+//#define RTI_MINUS_ONE
+#define FORCE_SPRITE_ZERO_HIT
 
 #include "../Internal.h"
 
@@ -87,8 +87,6 @@ namespace Nem {
     };
 
     class CPU {
-        Clock* masterClock;
-
         volatile bool stopExecution = false;
 
         bool irq = false, nmi = false;
@@ -96,8 +94,10 @@ namespace Nem {
         void processIRQ();
         void processNMI();
 
+        void waitCycle();
     public:
-        int cycles = 0;
+        volatile bool waiting = false;
+        long long cycles = 0;
 
 #ifdef NEM_PROFILE
         Profiler* profiler = nullptr;
@@ -113,9 +113,9 @@ namespace Nem {
         Byte nextByte(bool cycle = true);
         Address nextAddress(bool cycle = true);
 
-        void waitCycles(long long cycles);
+        void clockCycle(long long tick);
+
         void readCycle();
-        Byte readCycle(Byte value);
         void writeCycle();
 
         bool isFlagSet(CPURegisters::StatusFlags flags);
@@ -136,7 +136,7 @@ namespace Nem {
         void exec();
         void stopExec();
 
-        CPU(Clock* nMasterClock, Mapper* mapper);
+        CPU(Mapper* mapper);
         ~CPU();
     };
 }

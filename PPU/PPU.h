@@ -102,7 +102,7 @@ namespace Nem {
             LowBits = 0b00011111,
             SprOverflow = 0b00100000,
             SprZeroHit  = 0b01000000,
-            VBlankStart = 0b10000000,
+            VBlank = 0b10000000,
         };
 
         bool flipSpriteZero = false;
@@ -121,20 +121,13 @@ namespace Nem {
     };
 
     class PPU {
-        Clock* masterClock;
-
         CPU* cpu;
 
-//        volatile bool stopExecution = false;
-//        volatile bool isRendering = false;
     public:
         PPUMemory* memory;
         PPURegisters* registers;
 
         bool oddFrame = false;
-
-        void start();
-        void waitCycles(long long cycles);
 
         void postNMI();
 
@@ -143,7 +136,7 @@ namespace Nem {
 
         void setCPU(Nem::CPU* nCPU);
 
-        PPU(Clock* nMasterClock, Mapper* mapper);
+        PPU(Mapper* mapper);
         ~PPU();
     };
 

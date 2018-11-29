@@ -46,27 +46,33 @@ set(Sources
         Util/Clock.h
         Util/Clock.cpp
 
-        App/App.h
-        App/App.cpp
-        App/Display.cpp
-        App/Audio.cpp
-        App/Shaders.cpp
-
         Controller/Controller.h
         Controller/Controller.cpp
 
         Debug/Profiler.h
         Debug/Profiler.cpp
         Debug/Disassembler.h
-        Debug/Disassembler.cpp)
+        Debug/Disassembler.cpp Util/Stopwatch.cpp Util/Stopwatch.h)
+
+set(SourcePPU
+
+        App/App.h
+        App/App.cpp
+        App/Display.cpp
+        App/Audio.cpp
+        App/Shaders.cpp)
 
 configure_file(Shaders/map.vert ${CMAKE_CURRENT_BINARY_DIR}/map.vert COPYONLY)
 configure_file(Shaders/sprite.vert ${CMAKE_CURRENT_BINARY_DIR}/sprite.vert COPYONLY)
 configure_file(Shaders/paletted.frag ${CMAKE_CURRENT_BINARY_DIR}/paletted.frag COPYONLY)
 
-add_executable(Nem ${Sources} main.cpp)
+add_executable(Nem ${Sources} ${SourcePPU} main.cpp)
 target_link_libraries(Nem ${OPENGL_LIBRARIES} ${OPENAL_LIBRARY} glfw)
 target_compile_definitions(Nem PRIVATE NO_AUDIO)
+set_target_properties(Nem PROPERTIES
+        XCODE_ATTRIBUTE_GCC_PREFIX_HEADER "Internal.h"
+        XCODE_ATTRIBUTE_GCC_PRECOMPILE_PREFIX_HEADER "YES"
+)
 
 add_executable(NemCPU ${Sources} main.cpp)
 target_compile_definitions(NemCPU PRIVATE CPU_ONLY NO_AUDIO)

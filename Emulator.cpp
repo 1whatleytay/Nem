@@ -23,11 +23,13 @@ namespace Nem {
                 "mapper " + mapperNames[rom->header.getMapper()] + " : " +
                 std::to_string((int)rom->header.getMapper()));
 
-        masterClock = new Clock();
+        clock = new Clock();
 
-        cpu = new CPU(masterClock, mapper);
-        ppu = new PPU(masterClock, mapper);
+        cpu = new CPU(mapper);
+        ppu = new PPU(mapper);
         apu = new APU();
+
+        clock->cpuCallback = std::bind(&CPU::clockCycle, cpu, std::placeholders::_1);
 
         cpu->setPPU(ppu);
         cpu->setAPU(apu);
@@ -35,11 +37,12 @@ namespace Nem {
     }
 
     Emulator::~Emulator() {
+        clock->stopExec();
         cpu->stopExec();
 
+        delete clock;
         delete ppu;
         delete cpu;
-        delete masterClock;
         delete rom;
     }
 }

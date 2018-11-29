@@ -199,9 +199,10 @@ namespace Nem {
                     case 0x4014:
                         for (Address a = 0; a < 0x100; a++) {
                             ppu->memory->oam[a] = getByte(value * (Address)0x100 + a);
+                            cpu->writeCycle();
                         }
+                        if (cpu->cycles % 2 == 0) cpu->readCycle();
                         ppu->memory->edits.oam = true;
-                        cpu->waitCycles(553 + cpu->cycles % 2);
                         return;
                     case 0x4016:
                         if (controllers[0]) controllers[0]->write(value);

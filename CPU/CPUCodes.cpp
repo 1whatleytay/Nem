@@ -128,7 +128,6 @@ namespace Nem {
     }
 
     bool isbInstruction(CPU *cpu, AddressMode mode, InstArguments arguments) {
-        arguments.faster = true;
         incInstruction(cpu, mode, arguments);
         arguments.value = cpu->memory.getByte(arguments.pointer, false);
         sbcInstruction(cpu, mode, arguments);
@@ -136,7 +135,6 @@ namespace Nem {
     }
 
     bool dcpInstruction(CPU* cpu, AddressMode mode, InstArguments arguments) {
-        arguments.faster = true;
         decInstruction(cpu, mode, arguments);
         arguments.value = cpu->memory.getByte(arguments.pointer, false);
         compare(cpu, cpu->registers.accumulator, arguments.value);
@@ -252,7 +250,6 @@ namespace Nem {
     }
 
     bool sloInstruction(CPU* cpu, AddressMode mode, InstArguments arguments) {
-        arguments.faster = true;
         aslInstruction(cpu, mode, arguments);
         arguments.value = cpu->memory.getByte(arguments.pointer, false);
         oraInstruction(cpu, mode, arguments);
@@ -260,7 +257,6 @@ namespace Nem {
     }
 
     bool sreInstruction(CPU* cpu, AddressMode mode, InstArguments arguments) {
-        arguments.faster = true;
         lsrInstruction(cpu, mode, arguments);
         arguments.value = cpu->memory.getByte(arguments.pointer, false);
         eorInstruction(cpu, mode, arguments);
@@ -268,7 +264,6 @@ namespace Nem {
     }
 
     bool rlaInstruction(CPU* cpu, AddressMode mode, InstArguments arguments) {
-        arguments.faster = true;
         rolInstruction(cpu, mode, arguments);
         arguments.value = cpu->memory.getByte(arguments.pointer, false);
         andInstruction(cpu, mode, arguments);
@@ -276,7 +271,6 @@ namespace Nem {
     }
 
     bool rraInstruction(CPU* cpu, AddressMode mode, InstArguments arguments) {
-        arguments.faster = true;
         rorInstruction(cpu, mode, arguments);
         arguments.value = cpu->memory.getByte(arguments.pointer, false);
         adcInstruction(cpu, mode, arguments);
@@ -534,10 +528,10 @@ namespace Nem {
         return true;
     }
 
-    int callAddressMode(AddressedInstruction& inst, AddressMode mode, CPU* cpu) {
-        InstArguments arguments = { 0, 0, false, false };
-        bool read = (mode & NoRead) != NoRead;
-        mode = (AddressMode)(mode & 0b00001111);
+    int callInstruction(Instruction &inst, CPU *cpu) {
+        InstArguments arguments = { 0, 0, false };
+        bool read = (inst.mode & NoRead) != NoRead;
+        AddressMode mode = (AddressMode)(inst.mode & 0b00001111);
         int length = addressModeLengths[mode];
         Byte next = 0;
         Address nextA = 0;
@@ -553,11 +547,13 @@ namespace Nem {
                 arguments.pointer = (Address)next;
                 break;
             case ZeroPageX:
-                arguments.pointer = onPage((Address)next + cpu->readCycle(cpu->registers.indexX));
+                cpu->readCycle();
+                arguments.pointer = onPage((Address)next + cpu->registers.indexX);
                 if (read) arguments.value = cpu->memory.getByte(arguments.pointer);
                 break;
             case ZeroPageY:
-                arguments.pointer = onPage((Address)next + cpu->readCycle(cpu->registers.indexY));
+                cpu->readCycle();
+                arguments.pointer = onPage((Address)next + cpu->registers.indexY);
                 if (read) arguments.value = cpu->memory.getByte(arguments.pointer);
                 break;
             case Absolute:
@@ -610,784 +606,266 @@ namespace Nem {
                 break;
             default: break;
         }
-        return inst(cpu, mode, arguments) ? addressModeLengths[mode] : 1;
+        return inst.function(cpu, mode, arguments) ? addressModeLengths[mode] : 1;
     }
 
-    AddressedInstruction opInstructions[] = {
-        brkInstruction, // OP 0x00
-        oraInstruction, // OP 0x01
-        stpInstruction, // OP 0x02
-        sloInstruction, // OP 0x03
-        nopInstruction, // OP 0x04
-        oraInstruction, // OP 0x05
-        aslInstruction, // OP 0x06
-        sloInstruction, // OP 0x07
-        phpInstruction, // OP 0x08
-        oraInstruction, // OP 0x09
-        aslInstruction, // OP 0x0A
-        ancInstruction, // OP 0x0B
-        nopInstruction, // OP 0x0C
-        oraInstruction, // OP 0x0D
-        aslInstruction, // OP 0x0E
-        sloInstruction, // OP 0x0F
-        bxxInstruction, // OP 0x10
-        oraInstruction, // OP 0x11
-        stpInstruction, // OP 0x12
-        sloInstruction, // OP 0x13
-        nopInstruction, // OP 0x14
-        oraInstruction, // OP 0x15
-        aslInstruction, // OP 0x16
-        sloInstruction, // OP 0x17
-        scxInstruction, // OP 0x18
-        oraInstruction, // OP 0x19
-        nopInstruction, // OP 0x1A
-        sloInstruction, // OP 0x1B
-        nopInstruction, // OP 0x1C
-        oraInstruction, // OP 0x1D
-        aslInstruction, // OP 0x1E
-        sloInstruction, // OP 0x1F
-        jsrInstruction, // OP 0x20
-        andInstruction, // OP 0x21
-        stpInstruction, // OP 0x22
-        rlaInstruction, // OP 0x23
-        bitInstruction, // OP 0x24
-        andInstruction, // OP 0x25
-        rolInstruction, // OP 0x26
-        rlaInstruction, // OP 0x27
-        plpInstruction, // OP 0x28
-        andInstruction, // OP 0x29
-        rolInstruction, // OP 0x2A
-        ancInstruction, // OP 0x2B
-        bitInstruction, // OP 0x2C
-        andInstruction, // OP 0x2D
-        rolInstruction, // OP 0x2E
-        rlaInstruction, // OP 0x2F
-        bxxInstruction, // OP 0x30
-        andInstruction, // OP 0x31
-        stpInstruction, // OP 0x32
-        rlaInstruction, // OP 0x33
-        nopInstruction, // OP 0x34
-        andInstruction, // OP 0x35
-        rolInstruction, // OP 0x36
-        rlaInstruction, // OP 0x37
-        scxInstruction, // OP 0x38
-        andInstruction, // OP 0x39
-        nopInstruction, // OP 0x3A
-        rlaInstruction, // OP 0x3B
-        nopInstruction, // OP 0x3C
-        andInstruction, // OP 0x3D
-        rolInstruction, // OP 0x3E
-        rlaInstruction, // OP 0x3F
-        rtiInstruction, // OP 0x40
-        eorInstruction, // OP 0x41
-        stpInstruction, // OP 0x42
-        sreInstruction, // OP 0x43
-        nopInstruction, // OP 0x44
-        eorInstruction, // OP 0x45
-        lsrInstruction, // OP 0x46
-        sreInstruction, // OP 0x47
-        phaInstruction, // OP 0x48
-        eorInstruction, // OP 0x49
-        lsrInstruction, // OP 0x4A
-        alrInstruction, // OP 0x4B
-        jmpInstruction, // OP 0x4C
-        eorInstruction, // OP 0x4D
-        lsrInstruction, // OP 0x4E
-        sreInstruction, // OP 0x4F
-        bxxInstruction, // OP 0x50
-        eorInstruction, // OP 0x51
-        stpInstruction, // OP 0x52
-        sreInstruction, // OP 0x53
-        nopInstruction, // OP 0x54
-        eorInstruction, // OP 0x55
-        lsrInstruction, // OP 0x56
-        sreInstruction, // OP 0x57
-        scxInstruction, // OP 0x58
-        eorInstruction, // OP 0x59
-        nopInstruction, // OP 0x5A
-        sreInstruction, // OP 0x5B
-        nopInstruction, // OP 0x5C
-        eorInstruction, // OP 0x5D
-        lsrInstruction, // OP 0x5E
-        sreInstruction, // OP 0x5F
-        rtsInstruction, // OP 0x60
-        adcInstruction, // OP 0x61
-        stpInstruction, // OP 0x62
-        rraInstruction, // OP 0x63
-        nopInstruction, // OP 0x64
-        adcInstruction, // OP 0x65
-        rorInstruction, // OP 0x66
-        rraInstruction, // OP 0x67
-        plaInstruction, // OP 0x68
-        adcInstruction, // OP 0x69
-        rorInstruction, // OP 0x6A
-        arrInstruction, // OP 0x6B
-        jmpInstruction, // OP 0x6C
-        adcInstruction, // OP 0x6D
-        rorInstruction, // OP 0x6E
-        rraInstruction, // OP 0x6F
-        bxxInstruction, // OP 0x70
-        adcInstruction, // OP 0x71
-        stpInstruction, // OP 0x72
-        rraInstruction, // OP 0x73
-        nopInstruction, // OP 0x74
-        adcInstruction, // OP 0x75
-        rorInstruction, // OP 0x76
-        rraInstruction, // OP 0x77
-        scxInstruction, // OP 0x78
-        adcInstruction, // OP 0x79
-        nopInstruction, // OP 0x7A
-        rraInstruction, // OP 0x7B
-        nopInstruction, // OP 0x7C
-        adcInstruction, // OP 0x7D
-        rorInstruction, // OP 0x7E
-        rraInstruction, // OP 0x7F
-        nopInstruction, // OP 0x80
-        staInstruction, // OP 0x81
-        nopInstruction, // OP 0x82
-        saxInstruction, // OP 0x83
-        styInstruction, // OP 0x84
-        staInstruction, // OP 0x85
-        stxInstruction, // OP 0x86
-        saxInstruction, // OP 0x87
-        deyInstruction, // OP 0x88
-        nopInstruction, // OP 0x89
-        txaInstruction, // OP 0x8A
-        unimplemented, //XAAInstruction_i, // OP 0x8B
-        styInstruction, // OP 0x8C
-        staInstruction, // OP 0x8D
-        stxInstruction, // OP 0x8E
-        saxInstruction, // OP 0x8F
-        bxxInstruction, // OP 0x90
-        staInstruction, // OP 0x91
-        stpInstruction, // OP 0x92
-        unimplemented, //AHXInstruction_d_y, // OP 0x93
-        styInstruction, // OP 0x94
-        staInstruction, // OP 0x95
-        stxInstruction, // OP 0x96
-        saxInstruction, // OP 0x97
-        tyaInstruction, // OP 0x98
-        staInstruction, // OP 0x99
-        txsInstruction, // OP 0x9A
-        unimplemented, //TASInstruction_a_y, // OP 0x9B
-        unimplemented, //SHYInstruction_a_x, // OP 0x9C
-        staInstruction, // OP 0x9D
-        unimplemented, //SHXInstruction_a_y, // OP 0x9E
-        unimplemented, //AHXInstruction_a_y, // OP 0x9F
-        ldyInstruction, // OP 0xA0
-        ldaInstruction, // OP 0xA1
-        ldxInstruction, // OP 0xA2
-        laxInstruction, // OP 0xA3
-        ldyInstruction, // OP 0xA4
-        ldaInstruction, // OP 0xA5
-        ldxInstruction, // OP 0xA6
-        laxInstruction, // OP 0xA7
-        tayInstruction, // OP 0xA8
-        ldaInstruction, // OP 0xA9
-        taxInstruction, // OP 0xAA
-        laxInstruction, // OP 0xAB
-        ldyInstruction, // OP 0xAC
-        ldaInstruction, // OP 0xAD
-        ldxInstruction, // OP 0xAE
-        laxInstruction, // OP 0xAF
-        bxxInstruction, // OP 0xB0
-        ldaInstruction, // OP 0xB1
-        stpInstruction, // OP 0xB2
-        laxInstruction, // OP 0xB3
-        ldyInstruction, // OP 0xB4
-        ldaInstruction, // OP 0xB5
-        ldxInstruction, // OP 0xB6
-        laxInstruction, // OP 0xB7
-        scxInstruction, // OP 0xB8
-        ldaInstruction, // OP 0xB9
-        tsxInstruction, // OP 0xBA
-        unimplemented, //LASInstruction_a_y, // OP 0xBB
-        ldyInstruction, // OP 0xBC
-        ldaInstruction, // OP 0xBD
-        ldxInstruction, // OP 0xBE
-        laxInstruction, // OP 0xBF
-        cpyInstruction, // OP 0xC0
-        cmpInstruction, // OP 0xC1
-        nopInstruction, // OP 0xC2
-        dcpInstruction, // OP 0xC3
-        cpyInstruction, // OP 0xC4
-        cmpInstruction, // OP 0xC5
-        decInstruction, // OP 0xC6
-        dcpInstruction, // OP 0xC7
-        inyInstruction, // OP 0xC8
-        cmpInstruction, // OP 0xC9
-        dexInstruction, // OP 0xCA
-        axsInstruction, // OP 0xCB
-        cpyInstruction, // OP 0xCC
-        cmpInstruction, // OP 0xCD
-        decInstruction, // OP 0xCE
-        dcpInstruction, // OP 0xCF
-        bxxInstruction, // OP 0xD0
-        cmpInstruction, // OP 0xD1
-        stpInstruction, // OP 0xD2
-        dcpInstruction, // OP 0xD3
-        nopInstruction, // OP 0xD4
-        cmpInstruction, // OP 0xD5
-        decInstruction, // OP 0xD6
-        dcpInstruction, // OP 0xD7
-        scxInstruction, // OP 0xD8
-        cmpInstruction, // OP 0xD9
-        nopInstruction, // OP 0xDA
-        dcpInstruction, // OP 0xDB
-        nopInstruction, // OP 0xDC
-        cmpInstruction, // OP 0xDD
-        decInstruction, // OP 0xDE
-        dcpInstruction, // OP 0xDF
-        cpxInstruction, // OP 0xE0
-        sbcInstruction, // OP 0xE1
-        nopInstruction, // OP 0xE2
-        isbInstruction, // OP 0xE3
-        cpxInstruction, // OP 0xE4
-        sbcInstruction, // OP 0xE5
-        incInstruction, // OP 0xE6
-        isbInstruction, // OP 0xE7
-        inxInstruction, // OP 0xE8
-        sbcInstruction, // OP 0xE9
-        nopInstruction, // OP 0xEA
-        sbcInstruction, // OP 0xEB
-        cpxInstruction, // OP 0xEC
-        sbcInstruction, // OP 0xED
-        incInstruction, // OP 0xEE
-        isbInstruction, // OP 0xEF
-        bxxInstruction, // OP 0xF0
-        sbcInstruction, // OP 0xF1
-        stpInstruction, // OP 0xF2
-        isbInstruction, // OP 0xF3
-        nopInstruction, // OP 0xF4
-        sbcInstruction, // OP 0xF5
-        incInstruction, // OP 0xF6
-        isbInstruction, // OP 0xF7
-        scxInstruction, // OP 0xF8
-        sbcInstruction, // OP 0xF9
-        nopInstruction, // OP 0xFA
-        isbInstruction, // OP 0xFB
-        nopInstruction, // OP 0xFC
-        sbcInstruction, // OP 0xFD
-        incInstruction, // OP 0xFE
-        isbInstruction, // OP 0xFF
-    };
-
-    string opNames[] = {
-        "BRK", // NAME 0x00
-        "ORA", // NAME 0x01
-        "STP", // NAME 0x02
-        "SLO", // NAME 0x03
-        "NOP", // NAME 0x04
-        "ORA", // NAME 0x05
-        "ASL", // NAME 0x06
-        "SLO", // NAME 0x07
-        "PHP", // NAME 0x08
-        "ORA", // NAME 0x09
-        "ASL", // NAME 0x0A
-        "ANC", // NAME 0x0B
-        "NOP", // NAME 0x0C
-        "ORA", // NAME 0x0D
-        "ASL", // NAME 0x0E
-        "SLO", // NAME 0x0F
-        "BPL", // NAME 0x10
-        "ORA", // NAME 0x11
-        "STP", // NAME 0x12
-        "SLO", // NAME 0x13
-        "NOP", // NAME 0x14
-        "ORA", // NAME 0x15
-        "ASL", // NAME 0x16
-        "SLO", // NAME 0x17
-        "CLC", // NAME 0x18
-        "ORA", // NAME 0x19
-        "NOP", // NAME 0x1A
-        "SLO", // NAME 0x1B
-        "NOP", // NAME 0x1C
-        "ORA", // NAME 0x1D
-        "ASL", // NAME 0x1E
-        "SLO", // NAME 0x1F
-        "JSR", // NAME 0x20
-        "AND", // NAME 0x21
-        "STP", // NAME 0x22
-        "RLA", // NAME 0x23
-        "BIT", // NAME 0x24
-        "AND", // NAME 0x25
-        "ROL", // NAME 0x26
-        "RLA", // NAME 0x27
-        "PLP", // NAME 0x28
-        "AND", // NAME 0x29
-        "ROL", // NAME 0x2A
-        "ANC", // NAME 0x2B
-        "BIT", // NAME 0x2C
-        "AND", // NAME 0x2D
-        "ROL", // NAME 0x2E
-        "RLA", // NAME 0x2F
-        "BMI", // NAME 0x30
-        "AND", // NAME 0x31
-        "STP", // NAME 0x32
-        "RLA", // NAME 0x33
-        "NOP", // NAME 0x34
-        "AND", // NAME 0x35
-        "ROL", // NAME 0x36
-        "RLA", // NAME 0x37
-        "SEC", // NAME 0x38
-        "AND", // NAME 0x39
-        "NOP", // NAME 0x3A
-        "RLA", // NAME 0x3B
-        "NOP", // NAME 0x3C
-        "AND", // NAME 0x3D
-        "ROL", // NAME 0x3E
-        "RLA", // NAME 0x3F
-        "RTI", // NAME 0x40
-        "EOR", // NAME 0x41
-        "STP", // NAME 0x42
-        "SRE", // NAME 0x43
-        "NOP", // NAME 0x44
-        "EOR", // NAME 0x45
-        "LSR", // NAME 0x46
-        "SRE", // NAME 0x47
-        "PHA", // NAME 0x48
-        "EOR", // NAME 0x49
-        "LSR", // NAME 0x4A
-        "ALR", // NAME 0x4B
-        "JMP", // NAME 0x4C
-        "EOR", // NAME 0x4D
-        "LSR", // NAME 0x4E
-        "SRE", // NAME 0x4F
-        "BVC", // NAME 0x50
-        "EOR", // NAME 0x51
-        "STP", // NAME 0x52
-        "SRE", // NAME 0x53
-        "NOP", // NAME 0x54
-        "EOR", // NAME 0x55
-        "LSR", // NAME 0x56
-        "SRE", // NAME 0x57
-        "CLI", // NAME 0x58
-        "EOR", // NAME 0x59
-        "NOP", // NAME 0x5A
-        "SRE", // NAME 0x5B
-        "NOP", // NAME 0x5C
-        "EOR", // NAME 0x5D
-        "LSR", // NAME 0x5E
-        "SRE", // NAME 0x5F
-        "RTS", // NAME 0x60
-        "ADC", // NAME 0x61
-        "STP", // NAME 0x62
-        "RRA", // NAME 0x63
-        "NOP", // NAME 0x64
-        "ADC", // NAME 0x65
-        "ROR", // NAME 0x66
-        "RRA", // NAME 0x67
-        "PLA", // NAME 0x68
-        "ADC", // NAME 0x69
-        "ROR", // NAME 0x6A
-        "ARR", // NAME 0x6B
-        "JMP", // NAME 0x6C
-        "ADC", // NAME 0x6D
-        "ROR", // NAME 0x6E
-        "RRA", // NAME 0x6F
-        "BVS", // NAME 0x70
-        "ADC", // NAME 0x71
-        "STP", // NAME 0x72
-        "RRA", // NAME 0x73
-        "NOP", // NAME 0x74
-        "ADC", // NAME 0x75
-        "ROR", // NAME 0x76
-        "RRA", // NAME 0x77
-        "SEI", // NAME 0x78
-        "ADC", // NAME 0x79
-        "NOP", // NAME 0x7A
-        "RRA", // NAME 0x7B
-        "NOP", // NAME 0x7C
-        "ADC", // NAME 0x7D
-        "ROR", // NAME 0x7E
-        "RRA", // NAME 0x7F
-        "NOP", // NAME 0x80
-        "STA", // NAME 0x81
-        "NOP", // NAME 0x82
-        "SAX", // NAME 0x83
-        "STY", // NAME 0x84
-        "STA", // NAME 0x85
-        "STX", // NAME 0x86
-        "SAX", // NAME 0x87
-        "DEY", // NAME 0x88
-        "NOP", // NAME 0x89
-        "TXA", // NAME 0x8A
-        "UNI", //XAAInstruction_i, // NAME 0x8B
-        "STY", // NAME 0x8C
-        "STA", // NAME 0x8D
-        "STX", // NAME 0x8E
-        "SAX", // NAME 0x8F
-        "BCC", // NAME 0x90
-        "STA", // NAME 0x91
-        "STP", // NAME 0x92
-        "UNI", //AHXInstruction_d_y, // NAME 0x93
-        "STY", // NAME 0x94
-        "STA", // NAME 0x95
-        "STX", // NAME 0x96
-        "SAX", // NAME 0x97
-        "TYA", // NAME 0x98
-        "STA", // NAME 0x99
-        "TXS", // NAME 0x9A
-        "UNI", //TASInstruction_a_y, // NAME 0x9B
-        "UNI", //SHYInstruction_a_x, // NAME 0x9C
-        "STA", // NAME 0x9D
-        "UNI", //SHXInstruction_a_y, // NAME 0x9E
-        "UNI", //AHXInstruction_a_y, // NAME 0x9F
-        "LDY", // NAME 0xA0
-        "LDA", // NAME 0xA1
-        "LDX", // NAME 0xA2
-        "LAX", // NAME 0xA3
-        "LDY", // NAME 0xA4
-        "LDA", // NAME 0xA5
-        "LDX", // NAME 0xA6
-        "LAX", // NAME 0xA7
-        "TAY", // NAME 0xA8
-        "LDA", // NAME 0xA9
-        "TAX", // NAME 0xAA
-        "LAX", // NAME 0xAB
-        "LDY", // NAME 0xAC
-        "LDA", // NAME 0xAD
-        "LDX", // NAME 0xAE
-        "LAX", // NAME 0xAF
-        "BCS", // NAME 0xB0
-        "LDA", // NAME 0xB1
-        "STP", // NAME 0xB2
-        "LAX", // NAME 0xB3
-        "LDY", // NAME 0xB4
-        "LDA", // NAME 0xB5
-        "LDX", // NAME 0xB6
-        "LAX", // NAME 0xB7
-        "CLV", // NAME 0xB8
-        "LDA", // NAME 0xB9
-        "TSX", // NAME 0xBA
-        "UNI", //LASInstruction_a_y, // NAME 0xBB
-        "LDY", // NAME 0xBC
-        "LDA", // NAME 0xBD
-        "LDX", // NAME 0xBE
-        "LAX", // NAME 0xBF
-        "CPY", // NAME 0xC0
-        "CMP", // NAME 0xC1
-        "NOP", // NAME 0xC2
-        "DCP", // NAME 0xC3
-        "CPY", // NAME 0xC4
-        "CMP", // NAME 0xC5
-        "DEC", // NAME 0xC6
-        "DCP", // NAME 0xC7
-        "INY", // NAME 0xC8
-        "CMP", // NAME 0xC9
-        "DEX", // NAME 0xCA
-        "AXS", // NAME 0xCB
-        "CPY", // NAME 0xCC
-        "CMP", // NAME 0xCD
-        "DEC", // NAME 0xCE
-        "DCP", // NAME 0xCF
-        "BNE", // NAME 0xD0
-        "CMP", // NAME 0xD1
-        "STP", // NAME 0xD2
-        "DCP", // NAME 0xD3
-        "NOP", // NAME 0xD4
-        "CMP", // NAME 0xD5
-        "DEC", // NAME 0xD6
-        "DCP", // NAME 0xD7
-        "CLD", // NAME 0xD8
-        "CMP", // NAME 0xD9
-        "NOP", // NAME 0xDA
-        "DCP", // NAME 0xDB
-        "NOP", // NAME 0xDC
-        "CMP", // NAME 0xDD
-        "DEC", // NAME 0xDE
-        "DCP", // NAME 0xDF
-        "CPX", // NAME 0xE0
-        "SBC", // NAME 0xE1
-        "NOP", // NAME 0xE2
-        "ISB", // NAME 0xE3
-        "CPX", // NAME 0xE4
-        "SBC", // NAME 0xE5
-        "INC", // NAME 0xE6
-        "ISB", // NAME 0xE7
-        "INX", // NAME 0xE8
-        "SBC", // NAME 0xE9
-        "NOP", // NAME 0xEA
-        "SBC", // NAME 0xEB
-        "CPX", // NAME 0xEC
-        "SBC", // NAME 0xED
-        "INC", // NAME 0xEE
-        "ISB", // NAME 0xEF
-        "BEQ", // NAME 0xF0
-        "SBC", // NAME 0xF1
-        "STP", // NAME 0xF2
-        "ISB", // NAME 0xF3
-        "NOP", // NAME 0xF4
-        "SBC", // NAME 0xF5
-        "INC", // NAME 0xF6
-        "ISB", // NAME 0xF7
-        "SED", // NAME 0xF8
-        "SBC", // NAME 0xF9
-        "NOP", // NAME 0xFA
-        "ISB", // NAME 0xFB
-        "NOP", // NAME 0xFC
-        "SBC", // NAME 0xFD
-        "INC", // NAME 0xFE
-        "ISB", // NAME 0xFF
-    };
-
-    AddressMode opModes[] = {
-        Implied, // MODE 0x00
-        IndirectX, // MODE 0x01
-        Implied, // MODE 0x02
-        IndirectX, // MODE 0x03
-        ZeroPage, // MODE 0x04
-        ZeroPage, // MODE 0x05
-        ZeroPage, // MODE 0x06
-        ZeroPage, // MODE 0x07
-        Implied, // MODE 0x08
-        Immediate, // MODE 0x09
-        Implied, // MODE 0x0A
-        Immediate, // MODE 0x0B
-        Absolute, // MODE 0x0C
-        Absolute, // MODE 0x0D
-        Absolute, // MODE 0x0E
-        Absolute, // MODE 0x0F
-        Relative, // MODE 0x10
-        IndirectY, // MODE 0x11
-        Implied, // MODE 0x12
-        IndirectY, // MODE 0x13
-        ZeroPageX, // MODE 0x14
-        ZeroPageX, // MODE 0x15
-        ZeroPageX, // MODE 0x16
-        ZeroPageX, // MODE 0x17
-        Implied, // MODE 0x18
-        AbsoluteY, // MODE 0x19
-        Implied, // MODE 0x1A
-        AbsoluteY, // MODE 0x1B
-        AbsoluteX, // MODE 0x1C
-        AbsoluteX, // MODE 0x1D
-        AbsoluteX, // MODE 0x1E
-        AbsoluteX, // MODE 0x1F
-        NO_READ(Absolute), // MODE 0x20
-        IndirectX, // MODE 0x21
-        Implied, // MODE 0x22
-        IndirectX, // MODE 0x23
-        ZeroPage, // MODE 0x24
-        ZeroPage, // MODE 0x25
-        ZeroPage, // MODE 0x26
-        ZeroPage, // MODE 0x27
-        Implied, // MODE 0x28
-        Immediate, // MODE 0x29
-        Implied, // MODE 0x2A
-        Immediate, // MODE 0x2B
-        Absolute, // MODE 0x2C
-        Absolute, // MODE 0x2D
-        Absolute, // MODE 0x2E
-        Absolute, // MODE 0x2F
-        Relative, // MODE 0x30
-        IndirectY, // MODE 0x31
-        Implied, // MODE 0x32
-        IndirectY, // MODE 0x33
-        ZeroPageX, // MODE 0x34
-        ZeroPageX, // MODE 0x35
-        ZeroPageX, // MODE 0x36
-        ZeroPageX, // MODE 0x37
-        Implied, // MODE 0x38
-        AbsoluteY, // MODE 0x39
-        Implied, // MODE 0x3A
-        AbsoluteY, // MODE 0x3B
-        AbsoluteX, // MODE 0x3C
-        AbsoluteX, // MODE 0x3D
-        AbsoluteX, // MODE 0x3E
-        AbsoluteX, // MODE 0x3F
-        Implied, // MODE 0x40
-        IndirectX, // MODE 0x41
-        Implied, // MODE 0x42
-        IndirectX, // MODE 0x43
-        ZeroPage, // MODE 0x44
-        ZeroPage, // MODE 0x45
-        ZeroPage, // MODE 0x46
-        ZeroPage, // MODE 0x47
-        Implied, // MODE 0x48
-        Immediate, // MODE 0x49
-        Implied, // MODE 0x4A
-        Immediate, // MODE 0x4B
-        NO_READ(Absolute), // MODE 0x4C
-        Absolute, // MODE 0x4D
-        Absolute, // MODE 0x4E
-        Absolute, // MODE 0x4F
-        Relative, // MODE 0x50
-        IndirectY, // MODE 0x51
-        Implied, // MODE 0x52
-        IndirectY, // MODE 0x53
-        ZeroPageX, // MODE 0x54
-        ZeroPageX, // MODE 0x55
-        ZeroPageX, // MODE 0x56
-        ZeroPageX, // MODE 0x57
-        Implied, // MODE 0x58
-        AbsoluteY, // MODE 0x59
-        Implied, // MODE 0x5A
-        AbsoluteY, // MODE 0x5B
-        AbsoluteX, // MODE 0x5C
-        AbsoluteX, // MODE 0x5D
-        AbsoluteX, // MODE 0x5E
-        AbsoluteX, // MODE 0x5F
-        Implied, // MODE 0x60
-        IndirectX, // MODE 0x61
-        Implied, // MODE 0x62
-        IndirectX, // MODE 0x63
-        ZeroPage, // MODE 0x64
-        ZeroPage, // MODE 0x65
-        ZeroPage, // MODE 0x66
-        ZeroPage, // MODE 0x67
-        Implied, // MODE 0x68
-        Immediate, // MODE 0x69
-        Implied, // MODE 0x6A
-        Immediate, // MODE 0x6B
-        NO_READ(IndirectAbsolute), // MODE 0x6C
-        Absolute, // MODE 0x6D
-        Absolute, // MODE 0x6E
-        Absolute, // MODE 0x6F
-        Relative, // MODE 0x70
-        IndirectY, // MODE 0x71
-        Implied, // MODE 0x72
-        IndirectY, // MODE 0x73
-        ZeroPageX, // MODE 0x74
-        ZeroPageX, // MODE 0x75
-        ZeroPageX, // MODE 0x76
-        ZeroPageX, // MODE 0x77
-        Implied, // MODE 0x78
-        AbsoluteY, // MODE 0x79
-        Implied, // MODE 0x7A
-        AbsoluteY, // MODE 0x7B
-        AbsoluteX, // MODE 0x7C
-        AbsoluteX, // MODE 0x7D
-        AbsoluteX, // MODE 0x7E
-        AbsoluteX, // MODE 0x7F
-        Immediate, // MODE 0x80
-        NO_READ(IndirectX), // MODE 0x81
-        Immediate, // MODE 0x82
-        NO_READ(IndirectX), // MODE 0x83
-        NO_READ(ZeroPage), // MODE 0x84
-        NO_READ(ZeroPage), // MODE 0x85
-        NO_READ(ZeroPage), // MODE 0x86
-        NO_READ(ZeroPage), // MODE 0x87
-        Implied, // MODE 0x88
-        Immediate, // MODE 0x89
-        Implied, // MODE 0x8A
-        Unknown, // MODE 0x8B
-        NO_READ(Absolute), // MODE 0x8C
-        NO_READ(Absolute), // MODE 0x8D
-        NO_READ(Absolute), // MODE 0x8E
-        NO_READ(Absolute), // MODE 0x8F
-        Relative, // MODE 0x90
-        NO_READ(IndirectY), // MODE 0x91
-        Implied, // MODE 0x92
-        Unknown, // MODE 0x93
-        NO_READ(ZeroPageX), // MODE 0x94
-        NO_READ(ZeroPageX), // MODE 0x95
-        NO_READ(ZeroPageY), // MODE 0x96
-        NO_READ(ZeroPageY), // MODE 0x97
-        Implied, // MODE 0x98
-        NO_READ(AbsoluteY), // MODE 0x99
-        Implied, // MODE 0x9A
-        Unknown, // MODE 0x9B
-        Unknown, // MODE 0x9C
-        NO_READ(AbsoluteX), // MODE 0x9D
-        Unknown, // MODE 0x9E
-        Unknown, // MODE 0x9F
-        Immediate, // MODE 0xA0
-        IndirectX, // MODE 0xA1
-        Immediate, // MODE 0xA2
-        IndirectX, // MODE 0xA3
-        ZeroPage, // MODE 0xA4
-        ZeroPage, // MODE 0xA5
-        ZeroPage, // MODE 0xA6
-        ZeroPage, // MODE 0xA7
-        Implied, // MODE 0xA8
-        Immediate, // MODE 0xA9
-        Implied, // MODE 0xAA
-        Immediate, // MODE 0xAB
-        Absolute, // MODE 0xAC
-        Absolute, // MODE 0xAD
-        Absolute, // MODE 0xAE
-        Absolute, // MODE 0xAF
-        Relative, // MODE 0xB0
-        IndirectY, // MODE 0xB1
-        Implied, // MODE 0xB2
-        IndirectY, // MODE 0xB3
-        ZeroPageX, // MODE 0xB4
-        ZeroPageX, // MODE 0xB5
-        ZeroPageY, // MODE 0xB6
-        ZeroPageY, // MODE 0xB7
-        Implied, // MODE 0xB8
-        AbsoluteY, // MODE 0xB9
-        Implied, // MODE 0xBA
-        Unknown, // MODE 0xBB
-        AbsoluteX, // MODE 0xBC
-        AbsoluteX, // MODE 0xBD
-        AbsoluteY, // MODE 0xBE
-        AbsoluteY, // MODE 0xBF
-        Immediate, // MODE 0xC0
-        IndirectX, // MODE 0xC1
-        Immediate, // MODE 0xC2
-        IndirectX, // MODE 0xC3
-        ZeroPage, // MODE 0xC4
-        ZeroPage, // MODE 0xC5
-        ZeroPage, // MODE 0xC6
-        ZeroPage, // MODE 0xC7
-        Implied, // MODE 0xC8
-        Immediate, // MODE 0xC9
-        Implied, // MODE 0xCA
-        Immediate, // MODE 0xCB
-        Absolute, // MODE 0xCC
-        Absolute, // MODE 0xCD
-        Absolute, // MODE 0xCE
-        Absolute, // MODE 0xCF
-        Relative, // MODE 0xD0
-        IndirectY, // MODE 0xD1
-        Implied, // MODE 0xD2
-        IndirectY, // MODE 0xD3
-        ZeroPageX, // MODE 0xD4
-        ZeroPageX, // MODE 0xD5
-        ZeroPageX, // MODE 0xD6
-        ZeroPageX, // MODE 0xD7
-        Implied, // MODE 0xD8
-        AbsoluteY, // MODE 0xD9
-        Implied, // MODE 0xDA
-        AbsoluteY, // MODE 0xDB
-        AbsoluteX, // MODE 0xDC
-        AbsoluteX, // MODE 0xDD
-        AbsoluteX, // MODE 0xDE
-        AbsoluteX, // MODE 0xDF
-        Immediate, // MODE 0xE0
-        IndirectX, // MODE 0xE1
-        Immediate, // MODE 0xE2
-        IndirectX, // MODE 0xE3
-        ZeroPage, // MODE 0xE4
-        ZeroPage, // MODE 0xE5
-        ZeroPage, // MODE 0xE6
-        ZeroPage, // MODE 0xE7
-        Implied, // MODE 0xE8
-        Immediate, // MODE 0xE9
-        Implied, // MODE 0xEA
-        Immediate, // MODE 0xEB
-        Absolute, // MODE 0xEC
-        Absolute, // MODE 0xED
-        Absolute, // MODE 0xEE
-        Absolute, // MODE 0xEF
-        Relative, // MODE 0xF0
-        IndirectY, // MODE 0xF1
-        Implied, // MODE 0xF2
-        IndirectY, // MODE 0xF3
-        ZeroPageX, // MODE 0xF4
-        ZeroPageX, // MODE 0xF5
-        ZeroPageX, // MODE 0xF6
-        ZeroPageX, // MODE 0xF7
-        Implied, // MODE 0xF8
-        AbsoluteY, // MODE 0xF9
-        Implied, // MODE 0xFA
-        AbsoluteY, // MODE 0xFB
-        AbsoluteX, // MODE 0xFC
-        AbsoluteX, // MODE 0xFD
-        AbsoluteX, // MODE 0xFE
-        AbsoluteX, // MODE 0xFF
+    Instruction opInstructions[] = {
+        { brkInstruction, "BRK", Implied }, // OP 0x00
+        { oraInstruction, "ORA", IndirectX }, // OP 0x01
+        { stpInstruction, "STP", Implied }, // OP 0x02
+        { sloInstruction, "SLO", IndirectX }, // OP 0x03
+        { nopInstruction, "NOP", ZeroPage }, // OP 0x04
+        { oraInstruction, "ORA", ZeroPage }, // OP 0x05
+        { aslInstruction, "ASL", ZeroPage }, // OP 0x06
+        { sloInstruction, "SLO", ZeroPage }, // OP 0x07
+        { phpInstruction, "PHP", Implied }, // OP 0x08
+        { oraInstruction, "ORA", Immediate }, // OP 0x09
+        { aslInstruction, "ASL", Implied }, // OP 0x0A
+        { ancInstruction, "ANC", Immediate }, // OP 0x0B
+        { nopInstruction, "NOP", Absolute }, // OP 0x0C
+        { oraInstruction, "ORA", Absolute }, // OP 0x0D
+        { aslInstruction, "ASL", Absolute }, // OP 0x0E
+        { sloInstruction, "SLO", Absolute }, // OP 0x0F
+        { bxxInstruction, "BPL", Relative }, // OP 0x10
+        { oraInstruction, "ORA", IndirectY }, // OP 0x11
+        { stpInstruction, "STP", Implied }, // OP 0x12
+        { sloInstruction, "SLO", IndirectY }, // OP 0x13
+        { nopInstruction, "NOP", ZeroPageX }, // OP 0x14
+        { oraInstruction, "ORA", ZeroPageX }, // OP 0x15
+        { aslInstruction, "ASL", ZeroPageX }, // OP 0x16
+        { sloInstruction, "SLO", ZeroPageX }, // OP 0x17
+        { scxInstruction, "CLC", Implied }, // OP 0x18
+        { oraInstruction, "ORA", AbsoluteY }, // OP 0x19
+        { nopInstruction, "NOP", Implied }, // OP 0x1A
+        { sloInstruction, "SLO", AbsoluteY }, // OP 0x1B
+        { nopInstruction, "NOP", AbsoluteX }, // OP 0x1C
+        { oraInstruction, "ORA", AbsoluteX }, // OP 0x1D
+        { aslInstruction, "ASL", AbsoluteX }, // OP 0x1E
+        { sloInstruction, "SLO", AbsoluteX }, // OP 0x1F
+        { jsrInstruction, "JSR", NO_READ(Absolute) }, // OP 0x20
+        { andInstruction, "AND", IndirectX }, // OP 0x21
+        { stpInstruction, "STP", Implied }, // OP 0x22
+        { rlaInstruction, "RLA", IndirectX }, // OP 0x23
+        { bitInstruction, "BIT", ZeroPage }, // OP 0x24
+        { andInstruction, "AND", ZeroPage }, // OP 0x25
+        { rolInstruction, "ROL", ZeroPage }, // OP 0x26
+        { rlaInstruction, "RLA", ZeroPage }, // OP 0x27
+        { plpInstruction, "PLP", Implied }, // OP 0x28
+        { andInstruction, "AND", Immediate }, // OP 0x29
+        { rolInstruction, "ROL", Implied }, // OP 0x2A
+        { ancInstruction, "ANC", Immediate }, // OP 0x2B
+        { bitInstruction, "BIT", Absolute }, // OP 0x2C
+        { andInstruction, "AND", Absolute }, // OP 0x2D
+        { rolInstruction, "ROL", Absolute }, // OP 0x2E
+        { rlaInstruction, "RLA", Absolute }, // OP 0x2F
+        { bxxInstruction, "BMI", Relative }, // OP 0x30
+        { andInstruction, "AND", IndirectY }, // OP 0x31
+        { stpInstruction, "STP", Implied }, // OP 0x32
+        { rlaInstruction, "RLA", IndirectY }, // OP 0x33
+        { nopInstruction, "NOP", ZeroPageX }, // OP 0x34
+        { andInstruction, "AND", ZeroPageX }, // OP 0x35
+        { rolInstruction, "ROL", ZeroPageX }, // OP 0x36
+        { rlaInstruction, "RLA", ZeroPageX }, // OP 0x37
+        { scxInstruction, "SEC", Implied }, // OP 0x38
+        { andInstruction, "AND", AbsoluteY }, // OP 0x39
+        { nopInstruction, "NOP", Implied }, // OP 0x3A
+        { rlaInstruction, "RLA", AbsoluteY }, // OP 0x3B
+        { nopInstruction, "NOP", AbsoluteX }, // OP 0x3C
+        { andInstruction, "AND", AbsoluteX }, // OP 0x3D
+        { rolInstruction, "ROL", AbsoluteX }, // OP 0x3E
+        { rlaInstruction, "RLA", AbsoluteX }, // OP 0x3F
+        { rtiInstruction, "RTI", Implied }, // OP 0x40
+        { eorInstruction, "EOR", IndirectX }, // OP 0x41
+        { stpInstruction, "STP", Implied }, // OP 0x42
+        { sreInstruction, "SRE", IndirectX }, // OP 0x43
+        { nopInstruction, "NOP", ZeroPage }, // OP 0x44
+        { eorInstruction, "EOR", ZeroPage }, // OP 0x45
+        { lsrInstruction, "LSR", ZeroPage }, // OP 0x46
+        { sreInstruction, "SRE", ZeroPage }, // OP 0x47
+        { phaInstruction, "PHA", Implied }, // OP 0x48
+        { eorInstruction, "EOR", Immediate }, // OP 0x49
+        { lsrInstruction, "LSR", Implied }, // OP 0x4A
+        { alrInstruction, "ALR", Immediate }, // OP 0x4B
+        { jmpInstruction, "JMP", NO_READ(Absolute) }, // OP 0x4C
+        { eorInstruction, "EOR", Absolute }, // OP 0x4D
+        { lsrInstruction, "LSR", Absolute }, // OP 0x4E
+        { sreInstruction, "SRE", Absolute }, // OP 0x4F
+        { bxxInstruction, "BVC", Relative }, // OP 0x50
+        { eorInstruction, "EOR", IndirectY }, // OP 0x51
+        { stpInstruction, "STP", Implied }, // OP 0x52
+        { sreInstruction, "SRE", IndirectY }, // OP 0x53
+        { nopInstruction, "NOP", ZeroPageX }, // OP 0x54
+        { eorInstruction, "EOR", ZeroPageX }, // OP 0x55
+        { lsrInstruction, "LSR", ZeroPageX }, // OP 0x56
+        { sreInstruction, "SRE", ZeroPageX }, // OP 0x57
+        { scxInstruction, "CLI", Implied }, // OP 0x58
+        { eorInstruction, "EOR", AbsoluteY }, // OP 0x59
+        { nopInstruction, "NOP", Implied }, // OP 0x5A
+        { sreInstruction, "SRE", AbsoluteY }, // OP 0x5B
+        { nopInstruction, "NOP", AbsoluteX }, // OP 0x5C
+        { eorInstruction, "EOR", AbsoluteX }, // OP 0x5D
+        { lsrInstruction, "LSR", AbsoluteX }, // OP 0x5E
+        { sreInstruction, "SRE", AbsoluteX }, // OP 0x5F
+        { rtsInstruction, "RTS", Implied }, // OP 0x60
+        { adcInstruction, "ADC", IndirectX }, // OP 0x61
+        { stpInstruction, "STP", Implied }, // OP 0x62
+        { rraInstruction, "RRA", IndirectX }, // OP 0x63
+        { nopInstruction, "NOP", ZeroPage }, // OP 0x64
+        { adcInstruction, "ADC", ZeroPage }, // OP 0x65
+        { rorInstruction, "ROR", ZeroPage }, // OP 0x66
+        { rraInstruction, "RRA", ZeroPage }, // OP 0x67
+        { plaInstruction, "PLA", Implied }, // OP 0x68
+        { adcInstruction, "ADC", Immediate }, // OP 0x69
+        { rorInstruction, "ROR", Implied }, // OP 0x6A
+        { arrInstruction, "ARR", Immediate }, // OP 0x6B
+        { jmpInstruction, "JMP", NO_READ(IndirectAbsolute) }, // OP 0x6C
+        { adcInstruction, "ADC", Absolute }, // OP 0x6D
+        { rorInstruction, "ROR", Absolute }, // OP 0x6E
+        { rraInstruction, "RRA", Absolute }, // OP 0x6F
+        { bxxInstruction, "BVS", Relative }, // OP 0x70
+        { adcInstruction, "ADC", IndirectY }, // OP 0x71
+        { stpInstruction, "STP", Implied }, // OP 0x72
+        { rraInstruction, "RRA", IndirectY }, // OP 0x73
+        { nopInstruction, "NOP", ZeroPageX }, // OP 0x74
+        { adcInstruction, "ADC", ZeroPageX }, // OP 0x75
+        { rorInstruction, "ROR", ZeroPageX }, // OP 0x76
+        { rraInstruction, "RRA", ZeroPageX }, // OP 0x77
+        { scxInstruction, "SEI", Implied }, // OP 0x78
+        { adcInstruction, "ADC", AbsoluteY }, // OP 0x79
+        { nopInstruction, "NOP", Implied }, // OP 0x7A
+        { rraInstruction, "RRA", AbsoluteY }, // OP 0x7B
+        { nopInstruction, "NOP", AbsoluteX }, // OP 0x7C
+        { adcInstruction, "ADC", AbsoluteX }, // OP 0x7D
+        { rorInstruction, "ROR", AbsoluteX }, // OP 0x7E
+        { rraInstruction, "RRA", AbsoluteX }, // OP 0x7F
+        { nopInstruction, "NOP", Immediate }, // OP 0x80
+        { staInstruction, "STA", NO_READ(IndirectX) }, // OP 0x81
+        { nopInstruction, "NOP", Immediate }, // OP 0x82
+        { saxInstruction, "SAX", NO_READ(IndirectX) }, // OP 0x83
+        { styInstruction, "STY", NO_READ(ZeroPage) }, // OP 0x84
+        { staInstruction, "STA", NO_READ(ZeroPage) }, // OP 0x85
+        { stxInstruction, "STX", NO_READ(ZeroPage) }, // OP 0x86
+        { saxInstruction, "SAX", NO_READ(ZeroPage) }, // OP 0x87
+        { deyInstruction, "DEY", Implied }, // OP 0x88
+        { nopInstruction, "NOP", Immediate }, // OP 0x89
+        { txaInstruction, "TXA", Implied }, // OP 0x8A
+        { unimplemented, "UNI", Unknown }, //XAAInstruction_i, // OP 0x8B
+        { styInstruction, "STY", NO_READ(Absolute) }, // OP 0x8C
+        { staInstruction, "STA", NO_READ(Absolute) }, // OP 0x8D
+        { stxInstruction, "STX", NO_READ(Absolute) }, // OP 0x8E
+        { saxInstruction, "SAX", NO_READ(Absolute) }, // OP 0x8F
+        { bxxInstruction, "BCC", Relative }, // OP 0x90
+        { staInstruction, "STA", NO_READ(IndirectY) }, // OP 0x91
+        { stpInstruction, "STP", Implied }, // OP 0x92
+        { unimplemented, "UNI", Unknown }, //AHXInstruction_d_y, // OP 0x93
+        { styInstruction, "STY", NO_READ(ZeroPageX) }, // OP 0x94
+        { staInstruction, "STA", NO_READ(ZeroPageX) }, // OP 0x95
+        { stxInstruction, "STX", NO_READ(ZeroPageY) }, // OP 0x96
+        { saxInstruction, "SAX", NO_READ(ZeroPageY) }, // OP 0x97
+        { tyaInstruction, "TYA", Implied }, // OP 0x98
+        { staInstruction, "STA", NO_READ(AbsoluteY) }, // OP 0x99
+        { txsInstruction, "TXS", Implied }, // OP 0x9A
+        { unimplemented, "UNI", Unknown }, //TASInstruction_a_y, // OP 0x9B
+        { unimplemented, "UNI", Unknown }, //SHYInstruction_a_x, // OP 0x9C
+        { staInstruction, "STA", NO_READ(AbsoluteX) }, // OP 0x9D
+        { unimplemented, "UNI", Unknown }, //SHXInstruction_a_y, // OP 0x9E
+        { unimplemented, "UNI", Unknown }, //AHXInstruction_a_y, // OP 0x9F
+        { ldyInstruction, "LDY", Immediate }, // OP 0xA0
+        { ldaInstruction, "LDA", IndirectX }, // OP 0xA1
+        { ldxInstruction, "LDX", Immediate }, // OP 0xA2
+        { laxInstruction, "LAX", IndirectX }, // OP 0xA3
+        { ldyInstruction, "LDY", ZeroPage }, // OP 0xA4
+        { ldaInstruction, "LDA", ZeroPage }, // OP 0xA5
+        { ldxInstruction, "LDX", ZeroPage }, // OP 0xA6
+        { laxInstruction, "LAX", ZeroPage }, // OP 0xA7
+        { tayInstruction, "TAY", Implied }, // OP 0xA8
+        { ldaInstruction, "LDA", Immediate }, // OP 0xA9
+        { taxInstruction, "TAX", Implied }, // OP 0xAA
+        { laxInstruction, "LAX", Immediate }, // OP 0xAB
+        { ldyInstruction, "LDY", Absolute }, // OP 0xAC
+        { ldaInstruction, "LDA", Absolute }, // OP 0xAD
+        { ldxInstruction, "LDX", Absolute }, // OP 0xAE
+        { laxInstruction, "LAX", Absolute }, // OP 0xAF
+        { bxxInstruction, "BCS", Relative }, // OP 0xB0
+        { ldaInstruction, "LDA", IndirectY }, // OP 0xB1
+        { stpInstruction, "STP", Implied }, // OP 0xB2
+        { laxInstruction, "LAX", IndirectY }, // OP 0xB3
+        { ldyInstruction, "LDY", ZeroPageX }, // OP 0xB4
+        { ldaInstruction, "LDA", ZeroPageX }, // OP 0xB5
+        { ldxInstruction, "LDX", ZeroPageY }, // OP 0xB6
+        { laxInstruction, "LAX", ZeroPageY }, // OP 0xB7
+        { scxInstruction, "CLV", Implied }, // OP 0xB8
+        { ldaInstruction, "LDA", AbsoluteY }, // OP 0xB9
+        { tsxInstruction, "TSX", Implied }, // OP 0xBA
+        { unimplemented, "UNI", Unknown }, //LASInstruction_a_y, // OP 0xBB
+        { ldyInstruction, "LDY", AbsoluteX }, // OP 0xBC
+        { ldaInstruction, "LDA", AbsoluteX }, // OP 0xBD
+        { ldxInstruction, "LDX", AbsoluteY }, // OP 0xBE
+        { laxInstruction, "LAX", AbsoluteY }, // OP 0xBF
+        { cpyInstruction, "CPY", Immediate }, // OP 0xC0
+        { cmpInstruction, "CMP", IndirectX }, // OP 0xC1
+        { nopInstruction, "NOP", Immediate }, // OP 0xC2
+        { dcpInstruction, "DCP", IndirectX }, // OP 0xC3
+        { cpyInstruction, "CPY", ZeroPage }, // OP 0xC4
+        { cmpInstruction, "CMP", ZeroPage }, // OP 0xC5
+        { decInstruction, "DEC", ZeroPage }, // OP 0xC6
+        { dcpInstruction, "DCP", ZeroPage }, // OP 0xC7
+        { inyInstruction, "INY", Implied }, // OP 0xC8
+        { cmpInstruction, "CMP", Immediate }, // OP 0xC9
+        { dexInstruction, "DEX", Implied }, // OP 0xCA
+        { axsInstruction, "AXS", Immediate }, // OP 0xCB
+        { cpyInstruction, "CPY", Absolute }, // OP 0xCC
+        { cmpInstruction, "CMP", Absolute }, // OP 0xCD
+        { decInstruction, "DEC", Absolute }, // OP 0xCE
+        { dcpInstruction, "DCP", Absolute }, // OP 0xCF
+        { bxxInstruction, "BNE", Relative }, // OP 0xD0
+        { cmpInstruction, "CMP", IndirectY }, // OP 0xD1
+        { stpInstruction, "STP", Implied }, // OP 0xD2
+        { dcpInstruction, "DCP", IndirectY }, // OP 0xD3
+        { nopInstruction, "NOP", ZeroPageX }, // OP 0xD4
+        { cmpInstruction, "CMP", ZeroPageX }, // OP 0xD5
+        { decInstruction, "DEC", ZeroPageX }, // OP 0xD6
+        { dcpInstruction, "DCP", ZeroPageX }, // OP 0xD7
+        { scxInstruction, "CLD", Implied }, // OP 0xD8
+        { cmpInstruction, "CMP", AbsoluteY }, // OP 0xD9
+        { nopInstruction, "NOP", Implied }, // OP 0xDA
+        { dcpInstruction, "DCP", AbsoluteY }, // OP 0xDB
+        { nopInstruction, "NOP", AbsoluteX }, // OP 0xDC
+        { cmpInstruction, "CMP", AbsoluteX }, // OP 0xDD
+        { decInstruction, "DEC", AbsoluteX }, // OP 0xDE
+        { dcpInstruction, "DCP", AbsoluteX }, // OP 0xDF
+        { cpxInstruction, "CPX", Immediate }, // OP 0xE0
+        { sbcInstruction, "SBC", IndirectX }, // OP 0xE1
+        { nopInstruction, "NOP", Immediate }, // OP 0xE2
+        { isbInstruction, "ISB", IndirectX }, // OP 0xE3
+        { cpxInstruction, "CPX", ZeroPage }, // OP 0xE4
+        { sbcInstruction, "SBC", ZeroPage }, // OP 0xE5
+        { incInstruction, "INC", ZeroPage }, // OP 0xE6
+        { isbInstruction, "ISB", ZeroPage }, // OP 0xE7
+        { inxInstruction, "INX", Implied }, // OP 0xE8
+        { sbcInstruction, "SBC", Immediate }, // OP 0xE9
+        { nopInstruction, "NOP", Implied }, // OP 0xEA
+        { sbcInstruction, "SBC", Immediate }, // OP 0xEB
+        { cpxInstruction, "CPX", Absolute }, // OP 0xEC
+        { sbcInstruction, "SBC", Absolute }, // OP 0xED
+        { incInstruction, "INC", Absolute }, // OP 0xEE
+        { isbInstruction, "ISB", Absolute }, // OP 0xEF
+        { bxxInstruction, "BEQ", Relative }, // OP 0xF0
+        { sbcInstruction, "SBC", IndirectY }, // OP 0xF1
+        { stpInstruction, "STP", Implied }, // OP 0xF2
+        { isbInstruction, "ISB", IndirectY }, // OP 0xF3
+        { nopInstruction, "NOP", ZeroPageX }, // OP 0xF4
+        { sbcInstruction, "SBC", ZeroPageX }, // OP 0xF5
+        { incInstruction, "INC", ZeroPageX }, // OP 0xF6
+        { isbInstruction, "ISB", ZeroPageX }, // OP 0xF7
+        { scxInstruction, "SED", Implied }, // OP 0xF8
+        { sbcInstruction, "SBC", AbsoluteY }, // OP 0xF9
+        { nopInstruction, "NOP", Implied }, // OP 0xFA
+        { isbInstruction, "ISB", AbsoluteY }, // OP 0xFB
+        { nopInstruction, "NOP", AbsoluteX }, // OP 0xFC
+        { sbcInstruction, "SBC", AbsoluteX }, // OP 0xFD
+        { incInstruction, "INC", AbsoluteX }, // OP 0xFE
+        { isbInstruction, "ISB", AbsoluteX }, // OP 0xFF
     };
 
     int addressModeLengths[] = { 1, 2, 2, 2, 2, 3, 3, 3, 2, 2, 3, 2, 1 };

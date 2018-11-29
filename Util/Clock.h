@@ -5,38 +5,29 @@
 #ifndef NEM_CLOCK_H
 #define NEM_CLOCK_H
 
-#define NO_SLEEP
-#define SYNC_CPU_PPU
+#include <functional>
 
 namespace Nem {
+    typedef std::function<void(long long tick)> TickCallback;
+
+    void noTick(long long);
+
     class Clock {
-        long long cpuLastTime;
-        long long ppuLastTime;
+        volatile bool stopExecution = false;
 
-        bool cpuStarted = false;
-        bool ppuStarted = false;
+        long long lastTime;
+        long long cpuTick = 0;
+        long long ppuTick = 0;
 
-        bool cpuReady(long long cycles);
-        bool ppuReady(long long cycles);
+        void waitTicks(long long ticks);
     public:
-        void waitUntilCPUReady(long long cycles);
-        void waitUntilPPUReady(long long cycles);
+        void stopExec();
+        void exec();
 
-        void startCPU();
-        void startPPU();
+        TickCallback cpuCallback = noTick, ppuCallback = noTick;
 
         Clock();
-    };
-
-    class Stopwatch {
-        long long lastTime = 0;
-    public:
-        int lap;
-
-        bool hasBeen(long long milliseconds);
-
-        void start();
-        long long stop();
+        ~Clock();
     };
 }
 

@@ -30,7 +30,7 @@ namespace Nem {
     };
 
     struct ProfilerConfigPrintVectors {
-        bool doProfile = false;
+        bool doProfile = true;
     };
 
     struct ProfilerConfigPrintInstructions {
@@ -80,8 +80,8 @@ namespace Nem {
     class Profiler {
         // Analyze where most of the CPU time is being spent.
         // Detect infinite loops
-
         CPU* cpu;
+        bool noBreakpoint = false;
 
         void executionAnalysis(DisInst inst);
 
