@@ -4,6 +4,8 @@
 
 #include "Clock.h"
 
+#include "Stopwatch.h"
+
 #include <chrono>
 #include <thread>
 #include <iostream>
@@ -16,31 +18,32 @@ namespace Nem {
             std::chrono::high_resolution_clock::now().time_since_epoch()).count();
     }
 
-    long long ticksToNanoseconds(double ticks) {
-        return (long long)((ticks / 21477272.0) * 1000000000);
-    }
+    long long clockCycle12 = 559;
+    long long clockCycleSlow = clockCycle12 * 2;
 
-    void Clock::waitTicks(long long ticks) {
-        long long finishedTime = lastTime + ticksToNanoseconds(ticks);
+    void Clock::waitTicks() {
+        long long waitTime = clockCycle12;
+        long long finishedTime = lastTime + waitTime;
         long long ctNano = currentTimeNano();
+
         while (ctNano < finishedTime) {
-#ifdef YIELD_ON_TICK
-            std::this_thread::yield();
-#endif
             ctNano = currentTimeNano();
         }
-        lastTime = ctNano;
+        lastTime += waitTime;
     }
 
     void Clock::stopExec() { stopExecution = true; }
 
     void Clock::exec() {
         while (!stopExecution) {
-            ppuCallback(ppuTick++);
-            ppuCallback(ppuTick++);
-            ppuCallback(ppuTick++);
+            ppuCallback(ppuTick);
+            ppuTick += 3;
+//            ppuCallback(ppuTick++);
+//            ppuCallback(ppuTick++);
+
             cpuCallback(cpuTick++);
-            waitTicks(12);
+
+            waitTicks();
         }
     }
 

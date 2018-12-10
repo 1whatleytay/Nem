@@ -43,16 +43,20 @@ set(Sources
         APU/APU.h
         APU/APU.cpp
 
-        Util/Clock.h
-        Util/Clock.cpp
-
         Controller/Controller.h
         Controller/Controller.cpp
+
+        Util/Clock.h
+        Util/Clock.cpp
+        Util/Stopwatch.h
+        Util/Stopwatch.cpp
+        Util/Ranges.h
+        Util/Ranges.cpp
 
         Debug/Profiler.h
         Debug/Profiler.cpp
         Debug/Disassembler.h
-        Debug/Disassembler.cpp Util/Stopwatch.cpp Util/Stopwatch.h)
+        Debug/Disassembler.cpp)
 
 set(SourcePPU
 

@@ -6,6 +6,9 @@
 #define NEM_PPU_H
 
 #include "../ROM/ROM.h"
+#include "../Util/Ranges.h"
+
+#include <mutex>
 
 namespace Nem {
     class CPU;
@@ -36,13 +39,20 @@ namespace Nem {
 
     class PPUMemoryEdits {
     public:
-        bool patternTable = false;
-        bool nameTable = false;
-        bool paletteRam = false;
-        bool oam = false;
-        bool registers = false;
+        std::mutex mutex;
 
-        void addEdit(PPUMemoryRegion region);
+        Ranges patternTable; // 0 - 511
+        Ranges nameTable; // 0x2000 0x2FFF
+        Ranges oam;
+
+        bool paletteRam = false;
+        bool registers = false;
+//        bool patternTable = false;
+//        bool nameTable = false;
+//        bool paletteRam = false;
+//        bool oam = false;
+//        bool registers = false;
+
         void reset();
     };
 
@@ -50,8 +60,8 @@ namespace Nem {
         Mapper* mapper;
 
         PPUNameTable nameTables[2];
-    public:
         PPUOAM oam;
+    public:
         PPUPaletteMemory palettes;
         PPUMemoryEdits edits;
 
@@ -66,9 +76,10 @@ namespace Nem {
         MappedAddress mapAddress(Address address);
 
         Byte getByte(Address address);
-        Address getAddress(Address address);
         void setByte(Address address, Byte value);
-        void setAddress(Address address, Address value);
+
+        Byte getOAM(Byte address);
+        void setOAM(Byte address, Byte value);
 
         bool checkNeedsRefresh();
 
@@ -133,6 +144,10 @@ namespace Nem {
 
         bool isControlSet(PPURegisters::ControlFlags flags);
         bool isMaskSet(PPURegisters::MaskFlags flags);
+
+        Byte getOAM();
+        void setOAM(Byte value);
+        void sendOAMDMA(Byte page);
 
         void setCPU(Nem::CPU* nCPU);
 

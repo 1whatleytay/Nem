@@ -4,12 +4,12 @@
 
 #include "App.h"
 
-#include "../CPU/CPU.h"
 #include "../PPU/PPU.h"
 #include "../Util/Clock.h"
 
 #include <GLFW/glfw3.h>
 
+#include <fstream>
 #include <iostream>
 
 namespace Nem {
@@ -30,14 +30,17 @@ namespace Nem {
     }
 
     void Display::checkEdits() {
+        ppu->memory->edits.mutex.lock();
         bool ppuNeedsRefresh = ppu->memory->checkNeedsRefresh();
-        if (ppu->memory->edits.paletteRam) refreshPaletteRam();
-        if (ppu->memory->edits.nameTable) refreshNameTable();
-        if (ppu->memory->edits.oam) refreshOAM();
+        if (!ppu->memory->edits.nameTable.ranges.empty()) refreshNameTable();
+        if (!ppu->memory->edits.oam.ranges.empty()) refreshOAM();
+        if (ppuNeedsRefresh || !ppu->memory->edits.patternTable.ranges.empty()) refreshPatternTable();
+
         if (ppu->memory->edits.registers) refreshRegisters();
-        if (ppu->memory->edits.patternTable || ppuNeedsRefresh) refreshPatternTable();
+        if (ppu->memory->edits.paletteRam) refreshPaletteRam();
 
         ppu->memory->edits.reset();
+        ppu->memory->edits.mutex.unlock();
     }
 
     bool Display::init() {
@@ -58,7 +61,7 @@ namespace Nem {
         glActiveTexture(GL_TEXTURE0 + 0);
         glBindTexture(GL_TEXTURE_2D, patternTexture);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_R32UI, 8, spriteCount * 8,
-                     0, GL_RED_INTEGER, GL_UNSIGNED_INT, nullptr);
+                     0, GL_RED_INTEGER, GL_INT, nullptr);
         glBindSampler(0, sampler);
         refreshPatternTable();
 
@@ -66,7 +69,7 @@ namespace Nem {
         glActiveTexture(GL_TEXTURE0 + 1);
         glBindTexture(GL_TEXTURE_1D, nameTableTexture);
         glTexImage1D(GL_TEXTURE_1D, 0, GL_R32UI, kilobyte(2),
-                     0, GL_RED_INTEGER, GL_UNSIGNED_INT, nullptr);
+                     0, GL_RED_INTEGER, GL_INT, nullptr);
         glBindSampler(1, sampler);
         refreshNameTable();
 
@@ -87,46 +90,10 @@ namespace Nem {
 
         forceShow();
 
-        stopwatch.start();
-
         return true;
     }
 
-//    void Display::render() {
-//        glClear(GL_COLOR_BUFFER_BIT);
-//
-//        GLenum error = glGetError();
-//        if (error != GL_NO_ERROR) std::cout << "OpenGL Error: " << error << std::endl;
-//
-//        if (ppu->isControlSet(PPURegisters::ControlFlags::SprSize)) {
-//            std::cout << "Sprite Size 8x16 is unsupported." << std::endl;
-//        }
-//
-//        if (ppu->isMaskSet(PPURegisters::MaskFlags::ShowBKG)) {
-//            glUseProgram(backgroundProgram);
-//
-//            glUniform1i(uniformBkgPatternTableDrawIndex,
-//                        ppu->isControlSet(PPURegisters::ControlFlags::BkgPatternTable));
-//
-//            int val = 0;
-//            glUniform1i(uniformBkgScrollX, val);
-//            glUniform1i(uniformBkgNameTableDrawIndex, 0);
-//            glDrawArrays(GL_TRIANGLES, 0, 30 * 32 * 6);
-//        }
-//
-//        if (ppu->isMaskSet(PPURegisters::MaskFlags::ShowSPR)) {
-//            glUseProgram(spriteProgram);
-//
-//            glUniform1i(uniformSprPatternTableDrawIndex,
-//                        ppu->isControlSet(PPURegisters::ControlFlags::SprPatternTable));
-//
-//            glDrawArrays(GL_TRIANGLES, 0, 64 * 6);
-//        }
-//    }
-
     void Display::keyInput(int key, int action) {
-        if (key == GLFW_KEY_K || action == GLFW_PRESS)
-            setDebugFlag("profiler-execution-analysis", !getDebugFlag("profiler-execution-analysis"));
         if (mainControllerBindings.find(key) != mainControllerBindings.end()) {
             if (action == GLFW_PRESS) mainController.press(mainControllerBindings[key]);
             else if (action == GLFW_RELEASE) mainController.release(mainControllerBindings[key]);
@@ -136,28 +103,81 @@ namespace Nem {
         }
     }
 
-//    void Display::loop() {
-//        ppu->start();
-//        while (!glfwWindowShouldClose(window)) {
-//            glfwPollEvents();
-//
-//            ppu->registers->status |= PPURegisters::StatusFlags::SprZeroHit;
-//
+    void Display::skipCycles(long long num) {
+        stop.lap += num;
+        if (stop.hasBeen(1000000000)) {
+            times.push_back(stop.lap);
+            stop.reset();
+        }
+        while (processedTick + num > currentTick && currentTick != -1) { }
+        processedTick += num;
+    }
+
+    void Display::exec() {
+        while (!stopExecution && !glfwWindowShouldClose(window)) {
+            glUseProgram(backgroundProgram);
+            for (int a = 0; a < 240; a++) {
+//                checkEdits();
+//                glUniform1i(uniformBkgPatternTableDrawIndex,
+//                        ppu->isControlSet(PPURegisters::ControlFlags::BkgPatternTable));
+//                glDrawArrays(GL_TRIANGLES, (GLint) a / 8 * 32 * 6, 30 * 32 * 6);
+                skipCycles(261 - (a == 0 && ppu->isMaskSet(PPURegisters::MaskFlags::ShowBKG) && frame % 2 == 1));
+            }
+
 //            checkEdits();
-//            render();
-//            glfwSwapBuffers(window);
-//
-//            ppu->waitCycles(240 * 341);
-//            ppu->registers->status &= ~PPURegisters::StatusFlags::SprZeroHit;
-//
-//            if (ppu->isControlSet(PPURegisters::ControlFlags::VBlankNMI)) ppu->postNMI();
-//            ppu->registers->status |= PPURegisters::StatusFlags::VBlank;
-//            ppu->waitCycles(22 * 341);
-//            ppu->registers->status &= ~PPURegisters::StatusFlags::VBlank;
-//
-//            ppu->oddFrame = !ppu->oddFrame;
-//        }
-//    }
+//            glUseProgram(spriteProgram);
+//            glUniform1i(uniformSprPatternTableDrawIndex,
+//                    ppu->isControlSet(PPURegisters::ControlFlags::SprPatternTable));
+//            glDrawArrays(GL_TRIANGLES, 0, 64 * 6);
+
+            skipCycles(261 + 1);
+            ppu->registers->status |= PPURegisters::StatusFlags::VBlank;
+            if (ppu->isControlSet(PPURegisters::ControlFlags::VBlankNMI)) ppu->postNMI();
+            glfwPollEvents();
+            glfwSwapBuffers(window);
+            glClear(GL_COLOR_BUFFER_BIT);
+
+            skipCycles(260 + 261 * 19 + 1);
+
+            ppu->registers->status &= ~PPURegisters::StatusFlags::SprOverflow;
+            ppu->registers->status &= ~PPURegisters::StatusFlags::VBlank;
+            ppu->registers->status &= ~PPURegisters::StatusFlags::SprZeroHit;
+
+            skipCycles(260);
+
+            frame++;
+        }
+        clock->stopExec();
+    }
+
+    const string colorReset = "\033[0;m";
+    const string colorRed = "\033[31;m";
+    const string colorYellow = "\033[33;m";
+    const string colorGreen = "\033[32;m";
+    const int ticksNearby = 1000;
+
+    void Display::calcPerformance() {
+        long long lastResult = 0;
+        std::ifstream readStream("lastResult.txt");
+        if (readStream.good()) {
+            string text;
+            readStream >> text;
+            lastResult = std::stoll(text);
+        }
+        long long sum = 0;
+        for (long long time : times) sum += time;
+        long long average = sum / (long long)times.size();
+        bool noChange = std::abs(average - lastResult) <= ticksNearby;
+        string change = average > lastResult ? colorGreen : colorRed;
+        char changeChar = average > lastResult ? '+' : '-';
+        if (noChange) change = colorYellow;
+        std::cout << "Average Ticks p/s: " << change << changeChar << "[" << average << "] "
+        << colorReset << "(" << lastResult << ")" << std::endl;
+        if (!noChange) {
+            std::ofstream writeStream("lastResult.txt");
+            writeStream << average;
+        }
+    }
 
     void Display::close() {
         glDeleteTextures(1, &oamTexture);
@@ -170,68 +190,11 @@ namespace Nem {
 
         glDeleteProgram(spriteProgram);
         glDeleteProgram(backgroundProgram);
+
+        calcPerformance();
     }
 
-//    void Display::exec() {
-//        if (init()) loop();
-//        close();
-//    }
-    long long lastFrame = 0;
-
-    void Display::nextTick(long long cTick) {
-        if (cTick == -1) return;
-        long long tick = cTick - lastScanline;
-
-        if (scanlineId == 0 && tick == 0) {
-            std::cout << "Lapping and polling." << std::endl;
-            if (stopwatch.hasBeen(1000)) {
-                stopwatch.stop();
-                std::cout << "FPS: " << frame - lastFrame << std::endl;
-                lastFrame = frame;
-                stopwatch.start();
-            }
-            glfwPollEvents();
-            if (glfwWindowShouldClose(window)) clock->stopExec();
-            if (ppu->isMaskSet(PPURegisters::MaskFlags::ShowBKG) && frame % 2 == 1) tick++;
-        }
-
-        if (scanlineId >= 0 && scanlineId <= 239) {
-            checkEdits();
-            if (ppu->isMaskSet(PPURegisters::MaskFlags::ShowBKG) && scanlineId % 8 == 0) {
-                glUseProgram(backgroundProgram);
-                glUniform1i(uniformBkgPatternTableDrawIndex,
-                    ppu->isControlSet(PPURegisters::ControlFlags::BkgPatternTable));
-                glDrawArrays(GL_TRIANGLES, (GLint)scanlineId / 8 * 32 * 6, 30 * 32 * 6);
-            }
-            if (ppu->isMaskSet(PPURegisters::MaskFlags::ShowSPR) && scanlineId == 239 && tick == 340) {
-                glUseProgram(spriteProgram);
-                glUniform1i(uniformSprPatternTableDrawIndex,
-                    ppu->isControlSet(PPURegisters::ControlFlags::SprPatternTable));
-                glDrawArrays(GL_TRIANGLES, 0, 64 * 6);
-            }
-        }
-        if (scanlineId >= 240 && scanlineId <= 261) {
-            if (scanlineId == 241 && tick == 1) {
-                ppu->registers->status |= PPURegisters::StatusFlags::VBlank;
-                if (ppu->isControlSet(PPURegisters::ControlFlags::VBlankNMI)) ppu->postNMI();
-                glfwSwapBuffers(window);
-                glClear(GL_COLOR_BUFFER_BIT);
-            }
-            if (scanlineId == 261) {
-                ppu->registers->status &= ~PPURegisters::StatusFlags::SprOverflow;
-                ppu->registers->status &= ~PPURegisters::StatusFlags::VBlank;
-                ppu->registers->status &= ~PPURegisters::StatusFlags::SprZeroHit;
-            }
-        }
-        if (tick >= 340) {
-            if (scanlineId >= 261) {
-                frame++;
-            }
-            lastScanline = cTick + 1;
-            scanlineId++;
-            scanlineId = scanlineId % 262;
-        }
-    }
+    void Display::nextTick(long long nTick) { currentTick = nTick; }
 
     Display::Display(Clock* nClock, PPU* nPpu, string title) : clock(nClock), ppu(nPpu) {
         if (!glfwInit()) throw CouldNotCreateWindowException();
@@ -253,6 +216,8 @@ namespace Nem {
 
         glfwMakeContextCurrent(window);
         glfwSwapInterval(0);
+
+        times.reserve(1000);
 
         init();
     }

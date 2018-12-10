@@ -20,6 +20,17 @@ namespace Nem {
 
     void PPU::postNMI() { cpu->postNMI(); }
 
+    Byte PPU::getOAM() { return memory->getOAM(registers->oamAddress); }
+    void PPU::setOAM(Byte value) { memory->setOAM(registers->oamAddress, value); }
+
+    void PPU::sendOAMDMA(Byte page) {
+        for (Address a = 0; a < 0x100; a++) {
+            memory->setOAM((Byte)a, cpu->memory.getByte(page * (Address)0x100 + a));
+            cpu->writeCycle();
+        }
+        if (cpu->cycles % 2 == 0) cpu->readCycle();
+    }
+
     void PPU::setCPU(Nem::CPU* nCPU) { cpu = nCPU; }
 
     PPU::PPU(Mapper* mapper) {

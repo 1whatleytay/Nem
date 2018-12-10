@@ -19,7 +19,7 @@ namespace Nem {
         long long cpuTick = 0;
         long long ppuTick = 0;
 
-        void waitTicks(long long ticks);
+        void waitTicks();
     public:
         void stopExec();
         void exec();

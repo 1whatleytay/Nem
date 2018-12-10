@@ -13,8 +13,10 @@
 #define GLFW_INCLUDE_GLCOREARB
 #include <GLFW/glfw3.h>
 
+#ifndef NO_AUDIO
 #include <OpenAL/al.h>
 #include <OpenAL/alc.h>
+#endif
 
 #include <thread>
 #include <unordered_map>
@@ -23,11 +25,12 @@ namespace Nem {
     class Audio {
         APU* apu;
 
+#ifndef NO_AUDIO
         ALCdevice* device = nullptr;
         ALCcontext* context = nullptr;
 
         ALuint testBuffer;
-        GLuint source;
+        ALuint source;
 
         volatile bool stopExecution = false;
 
@@ -40,13 +43,21 @@ namespace Nem {
 
         explicit Audio(APU* nApu);
         ~Audio();
+#endif
     };
 
     class Display {
-        PPU* ppu;
+        PPU* ppu = nullptr;
+        Clock* clock = nullptr;
 
         // Interface
-        GLFWwindow* window;
+        GLFWwindow* window = nullptr;
+
+        // Debug and Performance
+        NanoStopwatch stop;
+        vector<long long> times;
+
+        void calcPerformance();
 
         // OpenGL
         GLuint backgroundProgram, spriteProgram;
@@ -60,17 +71,12 @@ namespace Nem {
         GLint uniformSprPatternSampler, uniformSprPaletteSampler, uniformSprOAMSampler;
         GLint uniformSprPatternTableDrawIndex;
 
-        Stopwatch stopwatch;
+        volatile bool stopExecution = false;
 
-        long long scanlineId = 0;
-        long long lastScanline = 0;
+        volatile long long currentTick = 0, processedTick = 0;
         long long frame = 0;
 
-        Clock* clock = nullptr;
-
-        vector<GLuint> makePatternData(PPU *ppu);
-        vector<GLuint> makeNameTableData(PPU* ppu);
-        vector<GLuint> makeOAMData(PPU* ppu);
+        inline void skipCycles(long long num);
 
         void forceShow();
         bool loadShaders();
@@ -84,8 +90,6 @@ namespace Nem {
         void checkEdits();
 
         bool init();
-        //void render();
-        //void loop();
         void close();
     public:
         EditController mainController;
@@ -93,9 +97,9 @@ namespace Nem {
         std::unordered_map<int, Buttons> mainControllerBindings;
         std::unordered_map<int, Buttons> secondControllerBindings;
 
+        void exec();
         void keyInput(int key, int action);
-
-        void nextTick(long long tick);
+        void nextTick(long long nTick);
 
         explicit Display(Clock* nClock, PPU* nPpu, string title = "Nemulator");
         ~Display();
@@ -106,6 +110,7 @@ namespace Nem {
         Audio* audio = nullptr;
 
         std::thread* cpuThread = nullptr;
+        std::thread* clockThread = nullptr;
         std::thread* audioThread = nullptr;
 
         void loadBindings();

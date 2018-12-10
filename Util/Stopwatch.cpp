@@ -7,41 +7,34 @@
 #include <chrono>
 
 namespace Nem {
-    long long Stopwatch::currentTimeMillis() {
+    long long Stopwatch::currentTime() {
         return std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::system_clock::now().time_since_epoch()).count();
     }
 
-    long long NanoStopwatch::currentTimeNano() {
-        return std::chrono::duration_cast<std::chrono::nanoseconds>(
-                std::chrono::high_resolution_clock::now().time_since_epoch()).count();
-    }
-
-    bool NanoStopwatch::hasBeen(long long nanoseconds) {
-        return lastTime + nanoseconds < currentTimeNano();
-    }
-
-    void NanoStopwatch::start() {
-        lastTime = currentTimeNano();
-        lap = 0;
-    }
-
-    long long NanoStopwatch::stop() {
-        return currentTimeNano() - lastTime;
-    }
-
     bool Stopwatch::hasBeen(long long milliseconds) {
-        return lastTime + milliseconds < currentTimeMillis();
+        return lastTime + milliseconds < currentTime();
     }
 
     void Stopwatch::start() {
-        lastTime = currentTimeMillis();
+        lastTime = currentTime();
         lap = 0;
     }
 
     long long Stopwatch::stop() {
-        return currentTimeMillis() - lastTime;
+        return currentTime() - lastTime;
     }
 
+    long long Stopwatch::reset() {
+        long long value = stop();
+        start();
+        return value;
+    }
 
+    Stopwatch::Stopwatch() { start(); }
+
+    long long NanoStopwatch::currentTime() {
+        return std::chrono::duration_cast<std::chrono::nanoseconds>(
+                std::chrono::high_resolution_clock::now().time_since_epoch()).count();
+    }
 }

@@ -34,11 +34,12 @@ namespace Nem {
 
     void App::exec() {
         cpuThread = new std::thread(&CPU::exec, cpu);
+        clockThread = new std::thread(&Clock::exec, clock);
 #ifndef NO_AUDIO
         audioThread = new std::thread(&Audio::exec, audio);
 #endif
 
-        clock->exec();
+        display->exec();
     }
 
     App::App(string pathToRom) : Emulator(pathToRom) {
@@ -57,6 +58,10 @@ namespace Nem {
     }
 
     App::~App() {
+        clock->stopExec();
+        if (clockThread) clockThread->join();
+        delete clockThread;
+
         cpu->stopExec();
         if (cpuThread) cpuThread->join();
         delete cpuThread;

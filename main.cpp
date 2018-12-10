@@ -22,15 +22,6 @@ int main(int count, char** args) {
     Nem::Emulator emulator = Nem::Emulator(string(args[1]));
     emulator.cpu->exec();
 #else
-//    Nem::Stopwatch stopwatch;
-//    stopwatch.start();
-//    while (true) {
-//        if (stopwatch.hasBeen(1000000)) {
-//            std::cout << "One second." << std::endl;
-//            stopwatch.stop();
-//            stopwatch.start();
-//        }
-//    }
     Nem::App app = Nem::App(string(args[1]));
     app.exec();
 #endif

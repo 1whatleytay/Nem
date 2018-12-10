@@ -7,29 +7,26 @@
 
 namespace Nem {
     class Stopwatch {
-        static long long currentTimeMillis();
-
         long long lastTime = 0;
+    protected:
+        virtual long long currentTime();
     public:
         int lap = 0;
 
-        bool hasBeen(long long milliseconds);
+        bool hasBeen(long long time);
 
         void start();
         long long stop();
+        long long reset();
+
+        Stopwatch();
     };
 
-    class NanoStopwatch {
-        static long long currentTimeNano();
-
-        long long lastTime = 0;
+    class NanoStopwatch : public Stopwatch {
+    protected:
+        long long currentTime() override;
     public:
-        int lap = 0;
-
-        bool hasBeen(long long nanoseconds);
-
-        void start();
-        long long stop();
+        NanoStopwatch() = default;
     };
 }
 

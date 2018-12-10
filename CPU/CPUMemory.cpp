@@ -6,7 +6,6 @@
 #include "../PPU/PPU.h"
 #include "../Mapper/Mapper.h"
 #include "../Controller/Controller.h"
-#include "../Errors.h"
 #include "../APU/APU.h"
 
 #ifdef NEM_PROFILE
@@ -59,7 +58,7 @@ namespace Nem {
                         return ppu->registers->status;
 #endif
                     case 0x2004:
-                        return ppu->memory->oam[ppu->registers->oamAddress];
+                        return ppu->getOAM();
                     case 0x2007:
                         return ppu->memory->getByte(ppu->registers->address);
                     default: break;
@@ -138,14 +137,15 @@ namespace Nem {
                         return;
                     case 0x2001:
                         ppu->registers->mask = value;
+                        ppu->memory->edits.mutex.lock();
                         ppu->memory->edits.registers = true;
+                        ppu->memory->edits.mutex.unlock();
                         return;
                     case 0x2003:
                         ppu->registers->oamAddress = value;
                         return;
                     case 0x2004:
-                        ppu->memory->oam[ppu->registers->oamAddress] = value;
-                        ppu->memory->edits.oam = true;
+                        ppu->setOAM(value);
                         return;
                     case 0x2005:
                         if (value > 0) {
@@ -196,14 +196,7 @@ namespace Nem {
                     case 0x4015: apu->registers->channels = value; return;
                     case 0x4017: apu->registers->frameCounter = value; return;
 
-                    case 0x4014:
-                        for (Address a = 0; a < 0x100; a++) {
-                            ppu->memory->oam[a] = getByte(value * (Address)0x100 + a);
-                            cpu->writeCycle();
-                        }
-                        if (cpu->cycles % 2 == 0) cpu->readCycle();
-                        ppu->memory->edits.oam = true;
-                        return;
+                    case 0x4014: ppu->sendOAMDMA(value); return;
                     case 0x4016:
                         if (controllers[0]) controllers[0]->write(value);
                         if (controllers[1]) controllers[1]->write(value);

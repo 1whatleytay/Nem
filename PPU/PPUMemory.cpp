@@ -91,10 +91,8 @@ namespace Nem {
         switch (mappedAddress.region) {
             case PatternTable0:
                 return mapper->getCHRByte(mappedAddress.effectiveAddress);
-                //return patternTables[0][mappedAddress.effectiveAddress - mappedAddress.region];
             case PatternTable1:
                 return mapper->getCHRByte(mappedAddress.effectiveAddress);
-                //return patternTables[1][mappedAddress.effectiveAddress - mappedAddress.region];
             case NameTable0:
                 return nameTables[getNameTableIndex(0)][mappedAddress.effectiveAddress - mappedAddress.region];
             case NameTable1:
@@ -157,91 +155,102 @@ namespace Nem {
                   << " Region: " << regionName(mappedAddress.region) << std::endl;
         return 0;
     }
-    Address PPUMemory::getAddress(Address address) {
-        return makeAddress(getByte(address), getByte(address + (Address)1));
-    }
+
     void PPUMemory::setByte(Address address, Byte value) {
         MappedAddress mappedAddress = mapAddress(address);
-        edits.addEdit(mappedAddress.region);
+        edits.mutex.lock();
+        bool set = false;
         switch (mappedAddress.region) {
             case PatternTable0:
                 mapper->setCHRByte(mappedAddress.effectiveAddress, value);
-                //patternTables[0][mappedAddress.effectiveAddress - mappedAddress.region] = value;
-                return;
+                edits.patternTable.add(mappedAddress.effectiveAddress / (Address)16);
+                set = true; break;
             case PatternTable1:
                 mapper->setCHRByte(mappedAddress.effectiveAddress, value);
-                //patternTables[1][mappedAddress.effectiveAddress - mappedAddress.region] = value;
-                return;
+                edits.patternTable.add(mappedAddress.effectiveAddress / (Address)16);
+                set = true; break;
             case NameTable0:
                 nameTables[getNameTableIndex(0)][mappedAddress.effectiveAddress - mappedAddress.region] = value;
-                return;
+                edits.nameTable.add(mappedAddress.effectiveAddress);
+                set = true; break;
             case NameTable1:
                 nameTables[getNameTableIndex(1)][mappedAddress.effectiveAddress - mappedAddress.region] = value;
-                return;
+                edits.nameTable.add(mappedAddress.effectiveAddress);
+                set = true; break;
             case NameTable2:
                 nameTables[getNameTableIndex(2)][mappedAddress.effectiveAddress - mappedAddress.region] = value;
-                return;
+                edits.nameTable.add(mappedAddress.effectiveAddress);
+                set = true; break;
             case NameTable3:
                 nameTables[getNameTableIndex(3)][mappedAddress.effectiveAddress - mappedAddress.region] = value;
-                return;
+                edits.nameTable.add(mappedAddress.effectiveAddress);
+                set = true; break;
             case PaletteRam:
+                edits.paletteRam = true;
                 switch (mappedAddress.effectiveAddress) {
                     case 0x3F10:
-                    case 0x3F00: palettes.clearColor = value; return;
+                    case 0x3F00: palettes.clearColor = value; set = true; break;
 
                     case 0x3F14:
-                    case 0x3F04: palettes.extra[0] = value; return;
+                    case 0x3F04: palettes.extra[0] = value; set = true; break;
 
                     case 0x3F18:
-                    case 0x3F08: palettes.extra[1] = value; return;
+                    case 0x3F08: palettes.extra[1] = value; set = true; break;
 
                     case 0x3F1C:
-                    case 0x3F0C: palettes.extra[2] = value; return;
+                    case 0x3F0C: palettes.extra[2] = value; set = true; break;
 
-                    case 0x3F01: palettes.background[0].colorA = value; return;
-                    case 0x3F02: palettes.background[0].colorB = value; return;
-                    case 0x3F03: palettes.background[0].colorC = value; return;
+                    case 0x3F01: palettes.background[0].colorA = value; set = true; break;
+                    case 0x3F02: palettes.background[0].colorB = value; set = true; break;
+                    case 0x3F03: palettes.background[0].colorC = value; set = true; break;
 
-                    case 0x3F05: palettes.background[1].colorA = value; return;
-                    case 0x3F06: palettes.background[1].colorB = value; return;
-                    case 0x3F07: palettes.background[1].colorC = value; return;
+                    case 0x3F05: palettes.background[1].colorA = value; set = true; break;
+                    case 0x3F06: palettes.background[1].colorB = value; set = true; break;
+                    case 0x3F07: palettes.background[1].colorC = value; set = true; break;
 
-                    case 0x3F09: palettes.background[2].colorA = value; return;
-                    case 0x3F0A: palettes.background[2].colorB = value; return;
-                    case 0x3F0B: palettes.background[2].colorC = value; return;
+                    case 0x3F09: palettes.background[2].colorA = value; set = true; break;
+                    case 0x3F0A: palettes.background[2].colorB = value; set = true; break;
+                    case 0x3F0B: palettes.background[2].colorC = value; set = true; break;
 
-                    case 0x3F0D: palettes.background[3].colorA = value; return;
-                    case 0x3F0E: palettes.background[3].colorB = value; return;
-                    case 0x3F0F: palettes.background[3].colorC = value; return;
+                    case 0x3F0D: palettes.background[3].colorA = value; set = true; break;
+                    case 0x3F0E: palettes.background[3].colorB = value; set = true; break;
+                    case 0x3F0F: palettes.background[3].colorC = value; set = true; break;
 
-                    case 0x3F11: palettes.sprite[0].colorA = value; return;
-                    case 0x3F12: palettes.sprite[0].colorB = value; return;
-                    case 0x3F13: palettes.sprite[0].colorC = value; return;
+                    case 0x3F11: palettes.sprite[0].colorA = value; set = true; break;
+                    case 0x3F12: palettes.sprite[0].colorB = value; set = true; break;
+                    case 0x3F13: palettes.sprite[0].colorC = value; set = true; break;
 
-                    case 0x3F15: palettes.sprite[1].colorA = value; return;
-                    case 0x3F16: palettes.sprite[1].colorB = value; return;
-                    case 0x3F17: palettes.sprite[1].colorC = value; return;
+                    case 0x3F15: palettes.sprite[1].colorA = value; set = true; break;
+                    case 0x3F16: palettes.sprite[1].colorB = value; set = true; break;
+                    case 0x3F17: palettes.sprite[1].colorC = value; set = true; break;
 
-                    case 0x3F19: palettes.sprite[2].colorA = value; return;
-                    case 0x3F1A: palettes.sprite[2].colorB = value; return;
-                    case 0x3F1B: palettes.sprite[2].colorC = value; return;
+                    case 0x3F19: palettes.sprite[2].colorA = value; set = true; break;
+                    case 0x3F1A: palettes.sprite[2].colorB = value; set = true; break;
+                    case 0x3F1B: palettes.sprite[2].colorC = value; set = true; break;
 
-                    case 0x3F1D: palettes.sprite[3].colorA = value; return;
-                    case 0x3F1E: palettes.sprite[3].colorB = value; return;
-                    case 0x3F1F: palettes.sprite[3].colorC = value; return;
+                    case 0x3F1D: palettes.sprite[3].colorA = value; set = true; break;
+                    case 0x3F1E: palettes.sprite[3].colorB = value; set = true; break;
+                    case 0x3F1F: palettes.sprite[3].colorC = value; set = true; break;
 
                     default: break;
                 }
                 break;
             default: break;
         }
+        edits.mutex.unlock();
+        if (set) return;
+
         std::cout << "PPU Write @ $" << makeHex(address) << " is unimplemented!"
                   << " Value: " << (int)value << " Region: " << regionName(mappedAddress.region) << std::endl;
     }
-    void PPUMemory::setAddress(Address address, Address value) {
-        Byte loByte = lo(value), hiByte = hi(value);
-        setByte(address, loByte);
-        setByte(address + (Address)1, hiByte);
+
+    Byte PPUMemory::getOAM(Byte address) {
+        return oam[address]; }
+    void PPUMemory::setOAM(Byte address, Byte value) {
+        oam[address] = value;
+        edits.mutex.lock();
+        edits.oam.add(address);
+        edits.mutex.unlock();
     }
 
     bool PPUMemory::checkNeedsRefresh() {
@@ -254,26 +263,12 @@ namespace Nem {
 
     PPUMemory::PPUMemory(Mapper* nMapper) : mapper(nMapper) { }
 
-    void PPUMemoryEdits::addEdit(PPUMemoryRegion region) {
-        switch (region) {
-            case PPUMemoryRegion::PatternTable0:
-            case PPUMemoryRegion::PatternTable1:
-                patternTable = true; return;
-            case PPUMemoryRegion::NameTable0:
-            case PPUMemoryRegion::NameTable1:
-            case PPUMemoryRegion::NameTable2:
-            case PPUMemoryRegion::NameTable3:
-                nameTable = true; return;
-            case PPUMemoryRegion::PaletteRam:
-                paletteRam = true; return;
-            default: return;
-        }
-    }
-
     void PPUMemoryEdits::reset() {
-        patternTable = false;
-        nameTable = false;
+        patternTable.ranges.clear();
+        nameTable.ranges.clear();
+        oam.ranges.clear();
+
         paletteRam = false;
-        oam = false;
+        registers = false;
     }
 }

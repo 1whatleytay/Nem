@@ -6,6 +6,7 @@
 #include "CPUCodes.h"
 
 #include "../Util/Clock.h"
+#include "../Util/Stopwatch.h"
 #ifdef NEM_PROFILE
 #include "../Debug/Profiler.h"
 #endif
@@ -36,15 +37,9 @@ namespace Nem {
     }
 
     void CPU::waitCycle() {
-        if (stopExecution) return;
-
         waiting = true;
 
-        while (waiting) {
-#ifdef YIELD_ON_TICK
-            std::this_thread::yield();
-#endif
-        }
+        while (waiting && !stopExecution) { }
     }
 
     void CPU::readCycle() { waitCycle(); cycles++; }

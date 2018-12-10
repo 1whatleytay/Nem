@@ -9,11 +9,8 @@ const vec2 vertexTypes[6] = vec2[](
     vec2(1, 1)
 );
 
-struct Metadata {
-    float unitX, unitY;
-    float tileWidth, tileHeight;
-};
-const Metadata meta = Metadata(1.0f / 256.0f, 1.0f / 240.0f, 8.0f, 8.0f);
+const vec2 unit = vec2(1.0f / 256.0f, 1.0f / 240.0f);
+const float tileSize = 8.0f;
 
 uniform usampler1D oam;
 
@@ -33,7 +30,7 @@ void main() {
 
     vec2 vertex = vertexTypes[vertexType];
 
-    uint xPos = texelFetch(oam, 4 * shapeId + 3, 0).r, yPos = texelFetch(oam, 4 * shapeId + 0, 0).r;
+    uvec2 pos = uvec2(texelFetch(oam, 4 * shapeId + 3, 0).r, texelFetch(oam, 4 * shapeId + 0, 0).r);
     uint patternFlags = texelFetch(oam, 4 * shapeId + 1, 0).r;
     uint flags = texelFetch(oam, 4 * shapeId + 2, 0).r;
 
@@ -47,14 +44,9 @@ void main() {
     if (isFlagSet(flags, flipX)) spriteCoord.x = 1 - spriteCoord.x;
     if (isFlagSet(flags, flipY)) spriteCoord.y = 1 - spriteCoord.y;
 
-    vertex.x *= meta.tileWidth;
-    vertex.y *= meta.tileHeight;
-
-    vertex.x += float(xPos);
-    vertex.y += float(yPos);
-
-    vertex.x *= meta.unitX;
-    vertex.y *= meta.unitY;
+    vertex.x *= tileSize;
+    vertex += pos;
+    vertex * unit;
 
     vertex.x = (vertex.x * 2 - 1);
     vertex.y = (vertex.y * 2 - 1) * -1;

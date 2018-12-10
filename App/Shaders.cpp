@@ -10,7 +10,7 @@
 #include <iostream>
 
 namespace Nem {
-    const int spriteCount = 0x2000 / 16;
+    //const int spriteCount = 0x2000 / 16;
 
     char* loadSource(string path, int* length) {
         std::ifstream stream(path, std::ios::in | std::ios::ate);
@@ -63,66 +63,61 @@ namespace Nem {
         GLint colorC = glGetUniformLocation(program, (location + ".colorC").c_str());
 
         glUseProgram(program);
-        glUniform1ui(colorA, (GLuint)palette.colorA);
-        glUniform1ui(colorB, (GLuint)palette.colorB);
-        glUniform1ui(colorC, (GLuint)palette.colorC);
+        glUniform1i(colorA, (int)palette.colorA);
+        glUniform1i(colorB, (int)palette.colorB);
+        glUniform1i(colorC, (int)palette.colorC);
     }
 
-    vector<GLuint> Display::makePatternData(PPU *ppu) {
-        int spriteCount = 0x2000 / 16;
-        vector<GLuint> data = vector<GLuint>((unsigned long)(spriteCount * 8 * 8));
-        for (int a = 0; a < spriteCount; a++) {
+    vector<GLint> makePatternData(PPU *ppu, Address start, Address count) {
+        vector<GLint> data = vector<GLint>((unsigned long)(count * 8 * 8));
+        for (int a = 0; a < count; a++) {
             for (int b = 0; b < 8; b++) {
-                Byte layer0 = ppu->memory->getByte(PPUMemoryRegion::PatternTable0 + a * 16 + b);
-                Byte layer1 = ppu->memory->getByte(PPUMemoryRegion::PatternTable0 + a * 16 + 8 + b);
+                Byte layer0 = ppu->memory->getByte(PPUMemoryRegion::PatternTable0 + (a + start) * 16 + b);
+                Byte layer1 = ppu->memory->getByte(PPUMemoryRegion::PatternTable0 + (a + start) * 16 + 8 + b);
                 for (int c = 0; c < 8; c++) {
                     Byte bit = (Byte)0b10000000 >> c;
-                    data[(a * 8 * 8) + b * 8 + c] =
-                            (GLuint)(
+                    data[((a + start) * 8 * 8) + b * 8 + c] =
                                     (((layer1 & bit) == bit) << 1) +
-                                    ((layer0 & bit) == bit));
+                                    ((layer0 & bit) == bit);
                 }
             }
         }
         return data;
     }
 
-    vector<GLuint> Display::makeNameTableData(Nem::PPU* ppu) {
-        vector<GLuint> data = vector<GLuint>(kilobyte(2));
-        for (int a = 0; a < kilobyte(1); a++) {
-            data[a] =
-                    ppu->memory->getByte(
-                            PPUMemoryRegion::NameTable0 + ppu->memory->getNameTableByIndex(0) * 0x400 + a);
-            data[a + kilobyte(1)] =
-                    ppu->memory->getByte(
-                            PPUMemoryRegion::NameTable0 + ppu->memory->getNameTableByIndex(1) * 0x400 + a);
-        }
+    vector<GLint> makeNameTableData(Nem::PPU* ppu, Address start, Address count) {
+        vector<GLint> data = vector<GLint>(count);
+        for (Address a = 0; a < count; a++) data[a] = ppu->memory->getByte(a + start);
         return data;
     }
 
-    vector<GLuint> Display::makeOAMData(PPU* ppu) {
+    vector<GLuint> makeOAMData(PPU* ppu, Byte start, Byte count) {
         vector<GLuint> data = vector<GLuint>(64 * 4);
-        for (int a = 0; a < 64 * 4; a++) data[a] = ppu->memory->oam[a];
+        for (Byte a = 0; a < count; a++) data[a] = ppu->memory->getOAM(a + start);
         return data;
     }
 
     void Display::refreshPatternTable() {
-        vector<GLuint> patternTableTex = makePatternData(ppu);
+        for (Ranges::SubRange range : ppu->memory->edits.patternTable.ranges) {
+            vector<GLint> patternTableTex = makePatternData(ppu, (Address)range.start, (Address)range.count);
 
-        glActiveTexture(GL_TEXTURE0 + 0);
-        glBindTexture(GL_TEXTURE_2D, patternTexture);
-        glTexSubImage2D(GL_TEXTURE_2D,
-                        0, 0, 0, 8, spriteCount * 8,
-                        GL_RED_INTEGER, GL_UNSIGNED_INT, &patternTableTex[0]);
+            glActiveTexture(GL_TEXTURE0 + 0);
+            glBindTexture(GL_TEXTURE_2D, patternTexture);
+            glTexSubImage2D(GL_TEXTURE_2D, 0,
+                    0, range.start * 8, 8, range.count * 8,
+                    GL_RED_INTEGER, GL_UNSIGNED_INT, &patternTableTex[0]);
+        }
     }
     void Display::refreshNameTable() {
-        vector<GLuint> nameTableTex = makeNameTableData(ppu);
+        for (Ranges::SubRange range : ppu->memory->edits.nameTable.ranges) {
+            vector<GLint> nameTableTex = makeNameTableData(ppu, (Address)range.start, (Address)range.count);
 
-        glActiveTexture(GL_TEXTURE0 + 1);
-        glBindTexture(GL_TEXTURE_1D, nameTableTexture);
-        glTexSubImage1D(GL_TEXTURE_1D,
-                        0, 0, kilobyte(2),
-                        GL_RED_INTEGER, GL_UNSIGNED_INT, &nameTableTex[0]);
+            glActiveTexture(GL_TEXTURE0 + 1);
+            glBindTexture(GL_TEXTURE_1D, nameTableTexture);
+            glTexSubImage1D(GL_TEXTURE_1D, 0,
+                    range.start - PPUMemoryRegion::PatternTable0, range.count,
+                    GL_RED_INTEGER, GL_INT, &nameTableTex[0]);
+        }
     }
     void Display::refreshPaletteRam() {
         Color clearColor = palette2C02[ppu->memory->getByte(0x3f00) % 64];
@@ -142,13 +137,15 @@ namespace Nem {
     }
 
     void Display::refreshOAM() {
-        vector<GLuint> oamTex = makeOAMData(ppu);
+        for (Ranges::SubRange range : ppu->memory->edits.oam.ranges) {
+            vector<GLuint> oamTex = makeOAMData(ppu, (Byte)range.start, (Byte)range.count);
 
-        glActiveTexture(GL_TEXTURE0 + 3);
-        glBindTexture(GL_TEXTURE_1D, oamTexture);
-        glTexSubImage1D(GL_TEXTURE_1D,
-                        0, 0, 64 * 4,
-                        GL_RED_INTEGER, GL_UNSIGNED_INT, &oamTex[0]);
+            glActiveTexture(GL_TEXTURE0 + 3);
+            glBindTexture(GL_TEXTURE_1D, oamTexture);
+            glTexSubImage1D(GL_TEXTURE_1D, 0,
+                    range.start, range.count,
+                    GL_RED_INTEGER, GL_UNSIGNED_INT, &oamTex[0]);
+        }
     }
 
     void Display::refreshRegisters() {
