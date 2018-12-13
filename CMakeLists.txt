@@ -9,13 +9,18 @@ set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 
 add_subdirectory(glfw)
-add_subdirectory(gl3w)
+set(DisplayLibs ${DisplayLibs} glfw)
+if (WIN32)
+    add_subdirectory(gl3w)
+    set(DisplayLibs ${DisplayLibs} gl3w)
+else()
+    find_package(OpenGL REQUIRED)
+    set(DisplayLibs ${DisplayLibs} OpenGL::GL)
+endif()
 
 if (APPLE)
     add_definitions(-DGL_SILENCE_DEPRECATION)
 endif()
-
-#include_directories(gl3w/include)
 
 set(Sources
 
@@ -66,7 +71,7 @@ set(SourcePPU
         App/Display.cpp)
 
 add_executable(Nem ${Sources} ${SourcePPU} main.cpp)
-target_link_libraries(Nem glfw gl3w)
+target_link_libraries(Nem ${DisplayLibs})
 
 add_executable(NemCPU ${Sources} main.cpp)
 target_compile_definitions(NemCPU PRIVATE CPU_ONLY)

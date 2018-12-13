@@ -13,9 +13,12 @@
 #include <thread>
 #include <unordered_map>
 
+#ifdef _WIN32
 #include <GL/gl3w.h>
+#else
+#define GLFW_INCLUDE_GLCOREARB
+#endif
 
-//#define GLFW_INCLUDE_GLCOREARB
 #include <GLFW/glfw3.h>
 
 struct GLFWwindow;

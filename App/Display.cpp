@@ -32,7 +32,9 @@ namespace Nem {
         glfwMakeContextCurrent(window);
         glfwSwapInterval(0);
 
+#ifdef _WIN32
         if (gl3wInit() != GL3W_OK) throw CouldNotCreateWindowException();
+#endif
     }
 
     Display::~Display() {

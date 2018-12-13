@@ -4,7 +4,7 @@ echo Deleting existing library folders.
 rmdir glfw /q /s
 rmdir gl3w /q /s
 
-echo Downloading GLFW for displays.
+echo Downloading GLFW for windows.
 git clone https://github.com/glfw/glfw.git
 
 echo Downloading GL3W for OpenGL on Windows.
