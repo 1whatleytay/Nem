@@ -4,6 +4,7 @@
 
 #include "Internal.h"
 
+#include <bitset>
 #include <sstream>
 #include <iomanip>
 

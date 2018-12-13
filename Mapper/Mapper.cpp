@@ -146,38 +146,19 @@ namespace Nem {
             int bank = getBankReference(address);
             switch (getPRGBankMode()) {
                 case Switch32KB:
-//                    if (getDebugFlag())
-//                        std::cout << getName() << ": (Switch32K) Memory Access At: " << makeHex(address - CPUMemoryRegion::PRGRom + ((prgBank & 0b00001110) >> 1) * kilobyte(32)) << std::endl;
                     return rom->prgROM[address - CPUMemoryRegion::PRGRom +
                         ((prgBank & 0b00001110) >> 1) * kilobyte(32)];
                 case Switch16KBFixFirst:
-//                    if (getDebugFlag()) {
-//                        if (bank == 0)
-//                            std::cout << getName() << ": (Switch16KFixFirst B0) Memory Access At: "
-//                                      << makeHex(address - CPUMemoryRegion::PRGRom) << std::endl;
-//                        else
-//                            std::cout << getName() << ": (Switch16KFixFirst B1) Memory Access At: " << makeHex(
-//                                    address - CPUMemoryRegion::PRGRom + (prgBank & 0b00001111) * kilobyte(16))
-//                                      << std::endl;
-//                    }
                     if (bank == 0) return rom->prgROM[address - CPUMemoryRegion::PRGRom];
                     else return rom->prgROM[address - CPUMemoryRegion::PRGRom +
                         (prgBank & 0b00001111) * kilobyte(16)];
                 case Switch16KBFixLast:
-//                    if (getDebugFlag()) {
-//                        if (bank == 0)
-//                            std::cout << getName() << ": (Switch16KFixLast B0) Memory Access At: " << makeHex(
-//                                    address - CPUMemoryRegion::PRGRom + (prgBank & 0b00001111) * kilobyte(16))
-//                                      << std::endl;
-//                        else
-//                            std::cout << getName() << ": (Switch16KFixLast B1) Memory Access At: "
-//                                      << makeHex(address - CPUMemoryRegion::PRGRom + kilobyte(16)) << std::endl;
-//                    }
                     if (bank == 0) return rom->prgROM[address - CPUMemoryRegion::PRGRom +
                         (prgBank & 0b00001111) * kilobyte(16)];
                     else return rom->prgROM[address - CPUMemoryRegion::PRGRom +
                         kilobyte(16)];
             }
+            return 0;
         }
         void setPRGByte(Address address, Byte value) override {
             shift = shift >> 1;

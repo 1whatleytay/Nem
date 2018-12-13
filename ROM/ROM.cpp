@@ -10,6 +10,7 @@
 
 #include <fstream>
 #include <sstream>
+#include <algorithm>
 
 namespace Nem {
     Byte headerVerify[4] = { 0x4E, 0x45, 0x53, 0x1A };
@@ -30,6 +31,7 @@ namespace Nem {
             case ROM::Version::NES2: return "NES 2.0";
             case ROM::Version::iNES: return "iNES";
             case ROM::Version::Archaic: return "Archaic NES";
+            default: return "Unknown";
         }
     }
 
@@ -37,6 +39,7 @@ namespace Nem {
         switch (mirroring) {
             case Direction::Vertical: return "Vertical";
             case Direction::Horizontal: return "Horizontal";
+            default: return "Unknown";
         }
     }
 

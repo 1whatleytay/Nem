@@ -16,8 +16,6 @@ int main(int count, char** args) {
         return 0;
     }
 
-
-
 #ifdef CPU_ONLY
     Nem::Emulator emulator = Nem::Emulator(string(args[1]));
     emulator.cpu->exec();
