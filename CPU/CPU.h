@@ -16,7 +16,6 @@ namespace Nem {
     class PPU;
     class APU;
     class Mapper;
-    class Clock;
     class ControllerInterface;
 
 #ifdef NEM_PROFILE
@@ -74,7 +73,7 @@ namespace Nem {
             Zero              = 0b00000010,
             Interrupt         = 0b00000100,
             Decimal           = 0b00001000,
-            BreakCommand      = 0b00110000,
+            //BreakCommand      = 0b00110000,
             Overflow          = 0b01000000,
             Negative          = 0b10000000,
         };
@@ -106,7 +105,7 @@ namespace Nem {
         CPUMemory memory;
         CPURegisters registers;
 
-        void postIRQ();
+        //void postIRQ();
         void postNMI();
 
         Byte thisByte(bool cycle = true);
@@ -136,7 +135,7 @@ namespace Nem {
         void exec();
         void stopExec();
 
-        CPU(Mapper* mapper);
+        explicit CPU(Mapper* mapper);
         ~CPU();
     };
 }

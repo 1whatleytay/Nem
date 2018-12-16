@@ -28,31 +28,24 @@ namespace Nem {
     typedef Byte PPUOAM[64 * 4];
 
     enum PPUMemoryRegion {
-        PatternTable0 = 0x0000,
-        PatternTable1 = 0x1000,
-        NameTable0    = 0x2000,
-        NameTable1    = 0x2400,
-        NameTable2    = 0x2800,
-        NameTable3    = 0x2C00,
-        PaletteRam    = 0x3F00,
+        PatternTables   = 0x0000,
+        NameTables      = 0x2000,
+        AttributeTables = 0x23C0,
+        PaletteRam      = 0x3F00,
     };
 
     class PPUMemoryEdits {
     public:
         std::mutex mutex;
 
-        Ranges patternTable; // 0 - 511
-        Ranges nameTable; // 0x2000 0x2FFF
-        Ranges oam;
+        Ranges patternTable[2]; // 0 - 255
+        Ranges nameTable[4]; // 0 - 959
+        Ranges oam; // 0 - 255
 
         bool paletteRam = false;
         bool registers = false;
-//        bool patternTable = false;
-//        bool nameTable = false;
-//        bool paletteRam = false;
-//        bool oam = false;
-//        bool registers = false;
 
+        void fill();
         void reset();
     };
 
@@ -71,6 +64,7 @@ namespace Nem {
         struct MappedAddress {
             PPUMemoryRegion region;
             Address effectiveAddress;
+            int index;
         };
 
         MappedAddress mapAddress(Address address);
@@ -135,8 +129,8 @@ namespace Nem {
         CPU* cpu;
 
     public:
-        PPUMemory* memory;
-        PPURegisters* registers;
+        PPUMemory memory;
+        PPURegisters registers;
 
         bool oddFrame = false;
 
@@ -152,7 +146,6 @@ namespace Nem {
         void setCPU(Nem::CPU* nCPU);
 
         PPU(Mapper* mapper);
-        ~PPU();
     };
 
     struct Color { float red, green, blue; };

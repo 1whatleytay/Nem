@@ -5,11 +5,4 @@
 #include "APU.h"
 
 namespace Nem {
-    APU::APU() {
-        registers = new APURegisters();
-    }
-
-    APU::~APU() {
-        delete registers;
-    }
 }

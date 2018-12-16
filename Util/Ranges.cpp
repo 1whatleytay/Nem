@@ -78,9 +78,14 @@ namespace Nem {
     }
 
     bool Ranges::get(int i) {
-        for (int a = 0; a < ranges.size(); a++) {
-            if (ranges[a].start <= i && ranges[a].end() >= i) return true;
+        for (SubRange &range : ranges) {
+            if (range.start <= i && range.end() >= i) return true;
         }
         return false;
+    }
+
+    void Ranges::fill(int start, int count) {
+        ranges.clear();
+        ranges.emplace_back(start, count);
     }
 }

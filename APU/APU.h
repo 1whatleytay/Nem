@@ -27,10 +27,7 @@ namespace Nem {
 
     class APU {
     public:
-        APURegisters* registers;
-
-        APU();
-        ~APU();
+        APURegisters registers;
     };
 }
 

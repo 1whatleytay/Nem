@@ -53,11 +53,11 @@ namespace Nem {
         }
 
         Byte getCHRByte(Address address) override {
-            if (rom->header.hasCHRRAM()) return chrRAM[address - PPUMemoryRegion::PatternTable0];
-            else return rom->chrROM[address - PPUMemoryRegion::PatternTable0];
+            if (rom->header.hasCHRRAM()) return chrRAM[address - PPUMemoryRegion::PatternTables];
+            else return rom->chrROM[address - PPUMemoryRegion::PatternTables];
         }
         void setCHRByte(Address address, Byte value) override {
-            if (rom->header.hasCHRRAM()) chrRAM[address - PPUMemoryRegion::PatternTable0] = value;
+            if (rom->header.hasCHRRAM()) chrRAM[address - PPUMemoryRegion::PatternTables] = value;
             else std::cout << getName() << ": Edit to unused CHR RAM." << std::endl;
         }
 
@@ -197,18 +197,19 @@ namespace Nem {
         }
 
         Byte getCHRByte(Address address) override {
-            if (rom->header.hasCHRRAM()) return chrRAM[address - PPUMemoryRegion::PatternTable0];
+            if (rom->header.hasCHRRAM()) return chrRAM[address - PPUMemoryRegion::PatternTables];
             switch (getCHRBankMode()) {
                 case Switch8KB:
-                    return rom->chrROM[address - PPUMemoryRegion::PatternTable0 +
+                    return rom->chrROM[address - PPUMemoryRegion::PatternTables +
                         ((chrBank[0] & 0b00011110) >> 1) * kilobyte(8)];
                 case Switch4KB:
-                    return rom->chrROM[address - PPUMemoryRegion::PatternTable0 +
-                        (chrBank[address >= PPUMemoryRegion::PatternTable1] & 0b00011111) * kilobyte(4)];
+                    return rom->chrROM[address - PPUMemoryRegion::PatternTables +
+                        (chrBank[address >= PPUMemoryRegion::PatternTables + 0x1000]
+                            & 0b00011111) * kilobyte(4)];
             }
         }
         void setCHRByte(Address address, Byte value) override {
-            if (rom->header.hasCHRRAM()) chrRAM[address - PPUMemoryRegion::PatternTable0] = value;
+            if (rom->header.hasCHRRAM()) chrRAM[address - PPUMemoryRegion::PatternTables] = value;
             else std::cout << getName() << ": Edit to unused CHR RAM." << std::endl;
         }
 
@@ -231,7 +232,7 @@ namespace Nem {
         }
 
         Byte getCHRByte(Address address) override {
-            return rom->chrROM[(address - PPUMemoryRegion::PatternTable0) + bank * 0x2000];
+            return rom->chrROM[(address - PPUMemoryRegion::PatternTables) + bank * 0x2000];
         }
         void setCHRByte(Address address, Byte value) override {
             std::cout << getName() << ": Edit to unused CHR RAM." << std::endl;

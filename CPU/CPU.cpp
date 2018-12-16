@@ -61,7 +61,7 @@ namespace Nem {
         }
     }
 
-    void CPU::postIRQ() { irq = true; }
+    //void CPU::postIRQ() { irq = true; }
     void CPU::postNMI() { nmi = true; }
 
     Byte CPU::thisByte(bool cycle) {

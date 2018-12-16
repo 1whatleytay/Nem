@@ -30,7 +30,7 @@ namespace Nem {
             return ("Could not find ROM at " + path).c_str();
         }
 
-        explicit RomNotFoundException(std::string nPath) : path(nPath) { }
+        explicit RomNotFoundException(std::string nPath) : path(std::move(nPath)) { }
     };
 
     class ShaderNotFoundException: public std::exception {
@@ -40,7 +40,18 @@ namespace Nem {
             return ("Could not find shader at " + path).c_str();
         }
 
-        explicit ShaderNotFoundException(std::string nPath) : path(nPath) { }
+        explicit ShaderNotFoundException(std::string nPath) : path(std::move(nPath)) { }
+    };
+
+    class ShaderProgramCreationException: public std::exception {
+        std::string path, log;
+    public:
+        const char* what() const noexcept override {
+            return ("Could not compile \"" + path + "\":\n" + log).c_str();
+        }
+
+        ShaderProgramCreationException(std::string nPath, std::string nLog)
+        : path(std::move(nPath)), log(std::move(nLog)) { }
     };
 
     class RomInvalidException: public std::exception {
@@ -50,7 +61,7 @@ namespace Nem {
             return ("Rom is " + romIssue).c_str();
         }
 
-        explicit RomInvalidException(std::string nRomIssue) : romIssue(nRomIssue) { }
+        explicit RomInvalidException(std::string nRomIssue) : romIssue(std::move(nRomIssue)) { }
     };
 
     class RomUnimplementedException: public std::exception {
@@ -60,7 +71,7 @@ namespace Nem {
             return ("Rom is using unimplemented " + issue).c_str();
         }
 
-        explicit RomUnimplementedException(std::string nIssue) : issue(nIssue) { }
+        explicit RomUnimplementedException(std::string nIssue) : issue(std::move(nIssue)) { }
     };
 }
 

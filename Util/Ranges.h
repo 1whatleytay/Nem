@@ -26,6 +26,8 @@ namespace Nem {
         void remove(int i);
 
         bool get(int i);
+
+        void fill(int start, int count);
     };
 }
 

@@ -12,20 +12,20 @@
 namespace Nem {
 
     bool PPU::isControlSet(PPURegisters::ControlFlags flags) {
-        return (registers->control & flags) == flags;
+        return (registers.control & flags) == flags;
     }
     bool PPU::isMaskSet(PPURegisters::MaskFlags flags) {
-        return (registers->mask & flags) == flags;
+        return (registers.mask & flags) == flags;
     }
 
     void PPU::postNMI() { cpu->postNMI(); }
 
-    Byte PPU::getOAM() { return memory->getOAM(registers->oamAddress); }
-    void PPU::setOAM(Byte value) { memory->setOAM(registers->oamAddress, value); }
+    Byte PPU::getOAM() { return memory.getOAM(registers.oamAddress); }
+    void PPU::setOAM(Byte value) { memory.setOAM(registers.oamAddress, value); }
 
     void PPU::sendOAMDMA(Byte page) {
         for (Address a = 0; a < 0x100; a++) {
-            memory->setOAM((Byte)a, cpu->memory.getByte(page * (Address)0x100 + a));
+            memory.setOAM((Byte)a, cpu->memory.getByte(page * (Address)0x100 + a));
             cpu->writeCycle();
         }
         if (cpu->cycles % 2 == 0) cpu->readCycle();
@@ -33,17 +33,9 @@ namespace Nem {
 
     void PPU::setCPU(Nem::CPU* nCPU) { cpu = nCPU; }
 
-    PPU::PPU(Mapper* mapper) {
-        memory = new PPUMemory(mapper);
-        registers = new PPURegisters();
-    }
+    PPU::PPU(Mapper* mapper) : memory(mapper) { }
 
-    PPU::~PPU() {
-        delete memory;
-        delete registers;
-    }
-
-    const float c = 255.0f;
+    constexpr float c = 255.0f;
 
     Color palette2C02[] = {
             { 84.0f/c, 84.0f/c, 84.0f/c }, // PL 0x00

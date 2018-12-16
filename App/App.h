@@ -15,6 +15,7 @@
 
 #ifdef _WIN32
 #include <GL/gl3w.h>
+#define GLFW_INCLUDE_NONE
 #else
 #define GLFW_INCLUDE_GLCOREARB
 #endif
@@ -28,20 +29,39 @@ namespace Nem {
         PPU* ppu = nullptr;
         GLFWwindow* window = nullptr;
 
+        GLuint program;
+        GLuint vao;
+        GLuint sampler;
+        GLuint palette, pattern[2];
+        GLuint nameTable[2];
+
         constexpr static int nesWidth = 256, nesHeight = 240;
         constexpr static float windowAmp = 1.5f;
         constexpr static int windowWidth = (int)(nesWidth * windowAmp);
         constexpr static int windowHeight = (int)(nesHeight * windowAmp);
+
+        Stopwatch stopwatch;
+        vector<int> times;
+        void calculateTimes();
+
+        void loadShaders();
+        void checkEdits();
+
+        bool init();
+        void close();
     public:
         EditController mainController;
         EditController secondController;
         std::unordered_map<int, Buttons> mainControllerBindings;
         std::unordered_map<int, Buttons> secondControllerBindings;
 
+        void pressKey(int key, int action);
         void exec();
 
         explicit Display(PPU* ppu);
         ~Display();
+
+        void checkGL(string test);
     };
 
     class App : private Emulator {

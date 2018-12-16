@@ -11,37 +11,22 @@
 namespace Nem {
     string regionName(PPUMemoryRegion region) {
         switch (region) {
-            case PPUMemoryRegion::PatternTable0: return "Pattern Table 0 (LEFT)";
-            case PPUMemoryRegion::PatternTable1: return "Pattern Table 1 (RIGHT)";
-            case PPUMemoryRegion::NameTable0: return "Name Table 0";
-            case PPUMemoryRegion::NameTable1: return "Name Table 1";
-            case PPUMemoryRegion::NameTable2: return "Name Table 2";
-            case PPUMemoryRegion::NameTable3: return "Name Table 3";
-            case PPUMemoryRegion::PaletteRam: return "Palette Ram";
+            case PatternTables: return "Pattern Tables";
+            case NameTables: return "Name Tables";
+            case AttributeTables: return "Attribute Tables";
+            case PaletteRam: return "Palette Ram";
         }
     }
 
     PPUMemory::MappedAddress PPUMemory::mapAddress(Address address) {
-        if (address < 0x1000)
-            return { PPUMemoryRegion::PatternTable0, address };
-        else if (address < 0x2000)
-            return { PPUMemoryRegion::PatternTable1, address };
-        else if (address < 0x2400)
-            return { PPUMemoryRegion::NameTable0, address };
-        else if (address < 0x2800)
-            return { PPUMemoryRegion::NameTable1, address };
-        else if (address < 0x2C00)
-            return { PPUMemoryRegion::NameTable2, address };
+        if (address < 0x2000)
+            return { PatternTables, (Address)(address % 0x1000), address / (Address)0x1000 };
         else if (address < 0x3000)
-            return { PPUMemoryRegion::NameTable3, address };
-        else if (address < 0x3400)
-            return { PPUMemoryRegion::NameTable0, (Address)(address - 0x1000) };
-        else if (address < 0x3800)
-            return { PPUMemoryRegion::NameTable1, (Address)(address - 0x1000) };
-        else if (address < 0x3C00)
-            return { PPUMemoryRegion::NameTable2, (Address)(address - 0x1000) };
+            return { ((address - 0x2000) % 0x400 > 0x3C0) ? AttributeTables : NameTables,
+                     address, (address - 0x2000) / 0x400};
         else if (address < 0x3F00)
-            return { PPUMemoryRegion::NameTable3, (Address)(address - 0x1000) };
+            return { ((address - 0x3000) % 0x400 > 0x3C0) ? AttributeTables : NameTables,
+                     address, (address - 0x3000) / 0x400};
         else
             return { PPUMemoryRegion::PaletteRam, (Address)((address - 0x3F00) % 0x0020 + 0x3F00) };
     }
@@ -89,18 +74,13 @@ namespace Nem {
     Byte PPUMemory::getByte(Address address) {
         MappedAddress mappedAddress = mapAddress(address);
         switch (mappedAddress.region) {
-            case PatternTable0:
+            case PatternTables:
                 return mapper->getCHRByte(mappedAddress.effectiveAddress);
-            case PatternTable1:
-                return mapper->getCHRByte(mappedAddress.effectiveAddress);
-            case NameTable0:
-                return nameTables[getNameTableIndex(0)][mappedAddress.effectiveAddress - mappedAddress.region];
-            case NameTable1:
-                return nameTables[getNameTableIndex(1)][mappedAddress.effectiveAddress - mappedAddress.region];
-            case NameTable2:
-                return nameTables[getNameTableIndex(2)][mappedAddress.effectiveAddress - mappedAddress.region];
-            case NameTable3:
-                return nameTables[getNameTableIndex(3)][mappedAddress.effectiveAddress - mappedAddress.region];
+            case AttributeTables:
+            case NameTables:
+                return nameTables[getNameTableByIndex(mappedAddress.index)]
+                    [mappedAddress.effectiveAddress -
+                        (mappedAddress.region + mappedAddress.index * 0x400)];
             case PaletteRam:
                 switch (mappedAddress.effectiveAddress) {
                     case 0x3F10:
@@ -160,30 +140,29 @@ namespace Nem {
         MappedAddress mappedAddress = mapAddress(address);
         edits.mutex.lock();
         bool set = false;
+        int arrIndex, point, x, y;
         switch (mappedAddress.region) {
-            case PatternTable0:
+            case PatternTables:
                 mapper->setCHRByte(mappedAddress.effectiveAddress, value);
-                edits.patternTable.add(mappedAddress.effectiveAddress / (Address)16);
+                edits.patternTable[mappedAddress.index].add(mappedAddress.effectiveAddress / (Address)16);
                 set = true; break;
-            case PatternTable1:
-                mapper->setCHRByte(mappedAddress.effectiveAddress, value);
-                edits.patternTable.add(mappedAddress.effectiveAddress / (Address)16);
+            case NameTables:
+                arrIndex = mappedAddress.effectiveAddress -
+                        (mappedAddress.region + mappedAddress.index * 0x400);
+                nameTables[getNameTableIndex(mappedAddress.index)][arrIndex] = value;
+                edits.nameTable[mappedAddress.index].add(arrIndex);
                 set = true; break;
-            case NameTable0:
-                nameTables[getNameTableIndex(0)][mappedAddress.effectiveAddress - mappedAddress.region] = value;
-                edits.nameTable.add(mappedAddress.effectiveAddress);
-                set = true; break;
-            case NameTable1:
-                nameTables[getNameTableIndex(1)][mappedAddress.effectiveAddress - mappedAddress.region] = value;
-                edits.nameTable.add(mappedAddress.effectiveAddress);
-                set = true; break;
-            case NameTable2:
-                nameTables[getNameTableIndex(2)][mappedAddress.effectiveAddress - mappedAddress.region] = value;
-                edits.nameTable.add(mappedAddress.effectiveAddress);
-                set = true; break;
-            case NameTable3:
-                nameTables[getNameTableIndex(3)][mappedAddress.effectiveAddress - mappedAddress.region] = value;
-                edits.nameTable.add(mappedAddress.effectiveAddress);
+            case AttributeTables:
+                point = mappedAddress.effectiveAddress - (NameTables + mappedAddress.index * 0x400);
+                arrIndex = mappedAddress.effectiveAddress -
+                        (AttributeTables + mappedAddress.index * 0x400);
+                x = arrIndex % 8; y = arrIndex / 8;
+                nameTables[getNameTableIndex(mappedAddress.index)][point] = value;
+                for (int a = 0; a < 2; a++) {
+                    for (int b = 0; b < 2 && y + b < 8; b++) {
+                        edits.nameTable[0].add(x + a + (y + b) * 32);
+                    }
+                }
                 set = true; break;
             case PaletteRam:
                 edits.paletteRam = true;
@@ -241,7 +220,8 @@ namespace Nem {
         if (set) return;
 
         std::cout << "PPU Write @ $" << makeHex(address) << " is unimplemented!"
-                  << " Value: " << (int)value << " Region: " << regionName(mappedAddress.region) << std::endl;
+                  << " Value: " << (int)value << " Region: "
+                  << regionName(mappedAddress.region) << std::endl;
     }
 
     Byte PPUMemory::getOAM(Byte address) {
@@ -263,9 +243,18 @@ namespace Nem {
 
     PPUMemory::PPUMemory(Mapper* nMapper) : mapper(nMapper) { }
 
+    void PPUMemoryEdits::fill() {
+        for (Ranges& table : patternTable) table.fill(0, 256);
+        for (Ranges& table : nameTable) table.fill(0, 0x3C0);
+        oam.fill(0, 256);
+
+        paletteRam = true;
+        registers = true;
+    }
+
     void PPUMemoryEdits::reset() {
-        patternTable.ranges.clear();
-        nameTable.ranges.clear();
+        for (Ranges& table : patternTable) table.ranges.clear();
+        for (Ranges& table : nameTable) table.ranges.clear();
         oam.ranges.clear();
 
         paletteRam = false;

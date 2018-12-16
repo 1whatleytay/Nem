@@ -68,7 +68,11 @@ set(SourcePPU
 
         App/App.h
         App/App.cpp
-        App/Display.cpp)
+        App/Display.cpp
+        App/Shaders.cpp)
+
+configure_file(Shaders/vertex.vert ${CMAKE_BINARY_DIR}/vertex.vert COPYONLY)
+configure_file(Shaders/fragment.frag ${CMAKE_BINARY_DIR}/fragment.frag COPYONLY)
 
 add_executable(Nem ${Sources} ${SourcePPU} main.cpp)
 target_link_libraries(Nem ${DisplayLibs})

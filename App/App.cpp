@@ -39,7 +39,6 @@ namespace Nem {
         cpuThread = new std::thread(&CPU::exec, cpu);
 
         display.exec();
-        std::cout << "Press that statement." << std::endl;
     }
 
     App::App(string pathToRom) : Emulator(std::move(pathToRom)), display(ppu) {
