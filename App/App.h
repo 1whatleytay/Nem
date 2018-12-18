@@ -25,6 +25,11 @@
 struct GLFWwindow;
 
 namespace Nem {
+    struct Vertex {
+        GLfloat x, y;
+        GLfloat texX, texY;
+    };
+
     class Display {
         PPU* ppu = nullptr;
         GLFWwindow* window = nullptr;
@@ -32,7 +37,7 @@ namespace Nem {
         GLuint program;
         GLuint vao;
         GLuint sampler;
-        GLuint palette, pattern[2];
+        GLuint palette, patternTable[2];
         GLuint nameTable[2];
 
         constexpr static int nesWidth = 256, nesHeight = 240;

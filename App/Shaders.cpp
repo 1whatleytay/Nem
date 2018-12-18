@@ -55,9 +55,12 @@ namespace Nem {
     }
 
     void Display::loadShaders() {
-        string vertexSource = loadFromFile("vertex.vert"), fragmentSource = loadFromFile("fragment.frag");
-        const GLint lVertexSource = (GLint)vertexSource.size(), lFragmentSource = (GLint)fragmentSource.size();
-        const GLchar *cVertexSource = vertexSource.c_str(), *cFragmentSource = fragmentSource.c_str();
+        string vertexSource = loadFromFile("vertex.vert"),
+            fragmentSource = loadFromFile("fragment.frag");
+        const GLint lVertexSource = (GLint)vertexSource.size(),
+            lFragmentSource = (GLint)fragmentSource.size();
+        const GLchar *cVertexSource = vertexSource.c_str(),
+            *cFragmentSource = fragmentSource.c_str();
 
         GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
         GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
@@ -91,35 +94,57 @@ namespace Nem {
             glBindBuffer(GL_ARRAY_BUFFER, nameTable[0]);
 
             for (const Ranges::SubRange& range : ppu->memory.edits.nameTable[0].ranges) {
-                GLfloat data[6 * 30 * 32 * 2];
+                vector<Vertex> data = vector<Vertex>((unsigned)(range.count * 6));
 
-                for (int x = 0; x < 32; x++) {
-                    for (int y = 0; y < 30; y++) {
-                        int index = 6 * 2 * (x + 32 * y);
-                        data[index + 0] = ((float) x / 32.0f) * 2 - 1;
-                        data[index + 1] = ((float) y / 30.0f) * -2 + 1;
+                for (int a = 0; a < range.count; a++) {
+                    int rangeBegin = a + range.start, index = rangeBegin * 6;
+                    int x = rangeBegin % 32, y = rangeBegin / 32;
+                    float x1 = (float) x / 32.0f, y1 = (float) y / 30.0f;
+                    float x2 = (float) (x + 1) / 32.0f, y2 = (float) (y + 1) / 30.0f;
 
-                        data[index + 2] = ((float) x / 32.0f) * 2 - 1;
-                        data[index + 3] = ((float) (y + 1) / 30.0f) * -2 + 1;
-
-                        data[index + 4] = ((float) (x + 1) / 32.0f) * 2 - 1;
-                        data[index + 5] = ((float) y / 30.0f) * -2 + 1;
-
-                        data[index + 6] = ((float) (x + 1) / 32.0f) * 2 - 1;
-                        data[index + 7] = ((float) y / 30.0f) * -2 + 1;
-
-                        data[index + 8] = ((float) x / 32.0f) * 2 - 1;
-                        data[index + 9] = ((float) (y + 1) / 30.0f) * -2 + 1;
-
-                        data[index + 10] = ((float) (x + 1) / 32.0f) * 2 - 1;
-                        data[index + 11] = ((float) (y + 1) / 30.0f) * -2 + 1;
-                    }
+                    data[index + 0] = { x1 * 2 - 1, y1 * -2 + 1, 0.0f, (float)(a)/256.0f };
+                    data[index + 1] = { x1 * 2 - 1, y2 * -2 + 1, 0.0f, (float)(a + 1)/256.0f };
+                    data[index + 2] = { x2 * 2 - 1, y1 * -2 + 1, 1.0f, (float)(a)/256.0f };
+                    data[index + 3] = { x2 * 2 - 1, y1 * -2 + 1, 1.0f, (float)(a)/256.0f };
+                    data[index + 4] = { x1 * 2 - 1, y2 * -2 + 1, 0.0f, (float)(a + 1)/256.0f };
+                    data[index + 5] = { x2 * 2 - 1, y2 * -2 + 1, 1.0f, (float)(a + 1)/256.0f };
                 }
 
-                glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(data), data);
+                glBufferSubData(GL_ARRAY_BUFFER, range.start * sizeof(Vertex) * 6,
+                        data.size() * sizeof(Vertex), &data[0]);
             }
 
             ppu->memory.edits.nameTable[0].ranges.clear();
+        }
+
+        if (!ppu->memory.edits.patternTable[0].ranges.empty()) {
+            glBindTexture(GL_TEXTURE_2D, patternTable[0]);
+
+            for (const Ranges::SubRange& range : ppu->memory.edits.patternTable[0].ranges) {
+                vector<GLbyte> data = vector<GLbyte>((unsigned)(range.count * 8 * 8));
+
+                for (Address a = 0; a < range.count; a++) {
+                    for (Address b = 0; b < 8; b++) {
+                        Byte layer0 = ppu->memory.getByte(
+                                PPUMemory::regionIndex(PatternTables, 0) + a * (Address)16 + b);
+                        Byte layer1 = ppu->memory.getByte(
+                                PPUMemory::regionIndex(PatternTables, 0) + a * (Address)16 +
+                                (Address)8 + b);
+                        for (int c = 0; c < 8; c++) {
+                            Byte bit = (Byte)0b10000000 >> c;
+                            data[(a * 8 * 8) + b * 8 + c] =
+                                    (GLbyte)(
+                                            (((layer1 & bit) == bit) << 1) +
+                                            ((layer0 & bit) == bit));
+                        }
+                    }
+                }
+
+                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, range.start * 8, 8, range.count * 8,
+                        GL_RED_INTEGER, GL_BYTE, &data[0]);
+            }
+
+            ppu->memory.edits.patternTable[0].ranges.clear();
         }
     }
 }

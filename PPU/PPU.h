@@ -60,6 +60,7 @@ namespace Nem {
 
         int getNameTableIndex(int index);
         int getNameTableByIndex(int nameTable);
+        static Address regionIndex(PPUMemoryRegion region, int index);
 
         struct MappedAddress {
             PPUMemoryRegion region;

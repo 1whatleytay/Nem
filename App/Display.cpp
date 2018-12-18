@@ -28,7 +28,8 @@ namespace Nem {
 
     void Display::checkGL(string myTest) {
         GLenum error = glGetError();
-        if (error != GL_NO_ERROR) std::cout << "OpenGL Error " << myTest << ": " << error << std::endl;
+        if (error != GL_NO_ERROR)
+            std::cout << "OpenGL Error " << myTest << ": " << makeHex((int)error) << std::endl;
     }
 
     void Display::calculateTimes() {
@@ -55,6 +56,8 @@ namespace Nem {
                     times.push_back(stopwatch.lap);
                     stopwatch.reset();
                 }
+
+                checkGL("My Test");
 
                 glBindBuffer(GL_ARRAY_BUFFER, nameTable[0]);
                 for (int a = 0; a < 30 * 32; a++) glDrawArrays(GL_TRIANGLES, a * 6, 6);
@@ -89,27 +92,37 @@ namespace Nem {
         glGenTextures(1, &palette);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_1D, palette);
-        glTexImage1D(GL_TEXTURE_1D, 0, GL_RGB, 0x40 * sizeof(GLfloat), 0, GL_RGB, GL_FLOAT, palette2C02);
+        glTexImage1D(GL_TEXTURE_1D, 0, GL_RGB, 0x40 * sizeof(GLfloat), 0,
+                GL_RGB, GL_FLOAT, palette2C02);
         glBindSampler(0, sampler);
 
-        glGenTextures(2, pattern);
+        glGenTextures(2, patternTable);
         glActiveTexture(GL_TEXTURE1);
-        for (GLuint pat : pattern) {
+        for (GLuint pat : patternTable) {
             glBindTexture(GL_TEXTURE_2D, pat);
             glTexImage2D(GL_TEXTURE_2D, 0, GL_R8I, 8, 256 * 8, 0,
                     GL_RED_INTEGER, GL_UNSIGNED_BYTE, nullptr);
         }
         glBindSampler(1, sampler);
 
-        glGenBuffers(1, nameTable);
+        glGenBuffers(2, nameTable);
         glBindBuffer(GL_ARRAY_BUFFER, nameTable[0]);
-        glBufferData(GL_ARRAY_BUFFER, 6 * 30 * 32 * sizeof(GLfloat) * 2, nullptr, GL_DYNAMIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, 6 * 30 * 32 * sizeof(Vertex), nullptr, GL_DYNAMIC_DRAW);
 
-        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, (void *)0);
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(GLfloat) * 4, (void*)0);
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(GLfloat) * 4,
+                (void *)(sizeof(GLfloat) * 2));
         glEnableVertexAttribArray(0);
+        glEnableVertexAttribArray(1);
 
         ppu->memory.edits.fill();
         checkEdits();
+
+        glBindBuffer(GL_ARRAY_BUFFER, nameTable[0]);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_1D, palette);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, patternTable[0]);
 
         return true;
     }
@@ -117,7 +130,9 @@ namespace Nem {
     void Display::close() {
         calculateTimes();
 
-        glDeleteBuffers(1, nameTable);
+        glDeleteTextures(2, patternTable);
+        glDeleteBuffers(2, nameTable);
+        glDeleteSamplers(1, &sampler);
         glDeleteVertexArrays(1, &vao);
 
         glDeleteProgram(program);

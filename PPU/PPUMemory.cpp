@@ -53,6 +53,17 @@ namespace Nem {
         return 0;
     }
 
+    Address PPUMemory::regionIndex(Nem::PPUMemoryRegion region, int index) {
+        switch (region) {
+            case PatternTables:
+                return PatternTables + 0x1000 * index;
+            case NameTables:
+                return NameTables + 0x400 * index;
+            default:
+                return region;
+        }
+    }
+
     int PPUMemory::getNameTableByIndex(int nameTable) {
         switch (mapper->getMirroring()) {
             case Direction::Vertical:
