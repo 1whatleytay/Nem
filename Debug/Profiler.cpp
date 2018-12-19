@@ -159,7 +159,7 @@ namespace Nem {
             << " NMI: " << makeHex(cpu->memory.getNMIVector()) << "]" << std::endl;
         }
         if (config.printInstructions.doProfile) {
-            std::ios_base::open_mode mode = std::ios::trunc;
+            std::_Ios_Openmode mode = std::ios::trunc;
             if (config.printInstructions.binary) mode |= std::ios::binary;
             config.printInstructions.outFile.open(config.printInstructions.fileName, mode);
         }

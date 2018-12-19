@@ -15,6 +15,7 @@ namespace Nem {
             case NameTables: return "Name Tables";
             case AttributeTables: return "Attribute Tables";
             case PaletteRam: return "Palette Ram";
+            default: return "Unknown";
         }
     }
 

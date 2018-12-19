@@ -13,8 +13,12 @@ namespace Nem {
     }
 
     void onKeyPress(GLFWwindow *window, int key, int, int action, int) {
-        Display *display = (Display *) glfwGetWindowUserPointer(window);
+        Display* display = (Display *) glfwGetWindowUserPointer(window);
         display->pressKey(key, action);
+    }
+
+    void onResize(GLFWwindow *window, int width, int height) {
+        glViewport(0, 0, width, height);
     }
 
     void Display::pressKey(int key, int action) {
@@ -50,11 +54,6 @@ namespace Nem {
     }
 
     void Display::skipCycles(long long num) {
-//        stop.lap += num;
-//        if (stop.hasBeen(1000000000)) {
-//            times.push_back(stop.lap);
-//            stop.reset();
-//        }
         while (processedTick + num > ppu->ticks && ppu->ticks != -1) { }
         processedTick += num;
     }
@@ -187,6 +186,7 @@ namespace Nem {
 
         glfwSetWindowUserPointer(window, this);
         glfwSetKeyCallback(window, onKeyPress);
+        glfwSetWindowSizeCallback(window, onResize);
 
         glfwMakeContextCurrent(window);
         glfwSwapInterval(0);

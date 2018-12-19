@@ -206,6 +206,7 @@ namespace Nem {
                     return rom->chrROM[address - PPUMemoryRegion::PatternTables +
                         (chrBank[address >= PPUMemoryRegion::PatternTables + 0x1000]
                             & 0b00011111) * kilobyte(4)];
+                default: return 0;
             }
         }
         void setCHRByte(Address address, Byte value) override {

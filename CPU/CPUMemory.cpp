@@ -23,6 +23,7 @@ namespace Nem {
             case CPUMemoryRegion::Debug: return "Debug Memory";
             case CPUMemoryRegion::SRAM: return "SRAM";
             case CPUMemoryRegion::PRGRom: return "Program ROM";
+            default: return "Unknown";
         }
     }
 

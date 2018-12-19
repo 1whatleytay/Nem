@@ -8,6 +8,7 @@
 
 #include "ROM.h"
 
+#include <cstring>
 #include <fstream>
 #include <sstream>
 #include <algorithm>
@@ -15,7 +16,7 @@
 namespace Nem {
     Byte headerVerify[4] = { 0x4E, 0x45, 0x53, 0x1A };
 
-    vector<Byte> loadRomData(string pathToRom) {
+    vector<Byte> loadRomData(const string& pathToRom) {
         std::ifstream stream(pathToRom, std::ios::binary | std::ios::in | std::ios::ate);
         if (!stream.good()) throw RomNotFoundException(pathToRom);
         vector<Byte> romData((unsigned long)stream.tellg());
@@ -65,7 +66,7 @@ namespace Nem {
     }
 
     bool ROMHeader::verify() const {
-        return memcmp(check, headerVerify, 4) == 0;
+        return std::memcmp(check, headerVerify, 4) == 0;
     }
 
     ROMHeader::ROMHeader(const vector<Byte>& romData) {
@@ -89,7 +90,7 @@ namespace Nem {
 
     ROM::Version ROM::getVersion() const {
         if (header.flag7 == 0x08 && header.zero[1] == 0x08 &&
-            header.prgRomSize8K * kilobyte(8) <= prgROM.size()) return Version::NES2;
+            (int)header.prgRomSize8K * kilobyte(8) <= (int)prgROM.size()) return Version::NES2;
         if (header.flag7 != 0x00 && header.zeroIsZero()) return Version::iNES;
         return Version::Archaic;
     }
