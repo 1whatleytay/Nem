@@ -41,13 +41,16 @@ namespace Nem {
         GLuint nameTable[2];
 
         constexpr static int nesWidth = 256, nesHeight = 240;
-        constexpr static float windowAmp = 1.5f;
+        constexpr static float windowAmp = 2.0f;
         constexpr static int windowWidth = (int)(nesWidth * windowAmp);
         constexpr static int windowHeight = (int)(nesHeight * windowAmp);
 
         Stopwatch stopwatch;
         vector<int> times;
         void calculateTimes();
+
+        long long processedTick = 0;
+        void skipCycles(long long cycles);
 
         void loadShaders();
         void checkEdits();

@@ -15,6 +15,7 @@ namespace Nem {
     class CPU;
     class PPU;
     class APU;
+    class Clock;
     class Mapper;
     class ControllerInterface;
 
@@ -86,6 +87,8 @@ namespace Nem {
     };
 
     class CPU {
+        PPU* ppu = nullptr;
+        Clock* clock = nullptr;
         volatile bool stopExecution = false;
 
         bool irq = false, nmi = false;
@@ -112,8 +115,6 @@ namespace Nem {
         Byte nextByte(bool cycle = true);
         Address nextAddress(bool cycle = true);
 
-        void clockCycle(long long tick);
-
         void readCycle();
         void writeCycle();
 
@@ -135,7 +136,7 @@ namespace Nem {
         void exec();
         void stopExec();
 
-        explicit CPU(Mapper* mapper);
+        CPU(Mapper* mapper, Clock* clock);
         ~CPU();
     };
 }

@@ -20,6 +20,8 @@ namespace Nem {
 
     void PPU::postNMI() { cpu->postNMI(); }
 
+    void PPU::clock() { ticks += 3; }
+
     Byte PPU::getOAM() { return memory.getOAM(registers.oamAddress); }
     void PPU::setOAM(Byte value) { memory.setOAM(registers.oamAddress, value); }
 

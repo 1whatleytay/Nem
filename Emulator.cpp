@@ -16,7 +16,7 @@ namespace Nem {
     }
 
     Emulator::Emulator(string pathToRom) {
-        rom = new ROM(pathToRom);
+        rom = new ROM(std::move(pathToRom));
         mapper = mappers[rom->header.getMapper()](rom);
 
         if (mapper == nullptr) throw RomUnimplementedException(
@@ -25,11 +25,9 @@ namespace Nem {
 
         clock = new Clock();
 
-        cpu = new CPU(mapper);
+        cpu = new CPU(mapper, clock);
         ppu = new PPU(mapper);
         apu = new APU();
-
-        clock->cpuCallback = std::bind(&CPU::clockCycle, cpu, std::placeholders::_1);
 
         cpu->setPPU(ppu);
         cpu->setAPU(apu);
@@ -37,7 +35,6 @@ namespace Nem {
     }
 
     Emulator::~Emulator() {
-        clock->stopExec();
         cpu->stopExec();
 
         delete clock;

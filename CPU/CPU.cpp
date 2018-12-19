@@ -4,9 +4,11 @@
 
 #include "CPU.h"
 #include "CPUCodes.h"
+#include "../PPU/PPU.h"
 
 #include "../Util/Clock.h"
 #include "../Util/Stopwatch.h"
+
 #ifdef NEM_PROFILE
 #include "../Debug/Profiler.h"
 #endif
@@ -31,15 +33,9 @@ namespace Nem {
         return debugCPU->registers.programCounter;
     }
 
-    void CPU::clockCycle(long long tick) {
-        waiting = false;
-        if (tick == -1) stopExecution = true;
-    }
-
     void CPU::waitCycle() {
-        waiting = true;
-
-        while (waiting && !stopExecution) { }
+        clock->waitTicks();
+        ppu->clock();
     }
 
     void CPU::readCycle() { waitCycle(); cycles++; }
@@ -114,9 +110,11 @@ namespace Nem {
         return address;
     }
 
-    void CPU::setPPU(PPU* nPPU) { memory.setPPU(nPPU); }
+    void CPU::setPPU(PPU* nPPU) { ppu = nPPU; memory.setPPU(nPPU); }
     void CPU::setAPU(APU *nAPU) { memory.setAPU(nAPU); }
-    void CPU::setController(int index, ControllerInterface* controller) { memory.setController(index, controller); }
+    void CPU::setController(int index, ControllerInterface* controller) {
+        memory.setController(index, controller);
+    }
 
     void CPU::step() {
         registers.programCounter++;
@@ -142,7 +140,7 @@ namespace Nem {
         stopExecution = true;
     }
 
-    CPU::CPU(Mapper* mapper) : memory(this, mapper) {
+    CPU::CPU(Mapper* mapper, Clock* clock) : memory(this, mapper), clock(clock) {
         registers.programCounter = CPU_ENTRY;
         registers.programCounter--;
 

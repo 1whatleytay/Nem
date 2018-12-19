@@ -8,6 +8,10 @@
 #include <iostream>
 
 namespace Nem {
+    void onError(int code, const char* description) {
+        std::cout << "GLFW Error " << makeHex(code) << ": " << description << std::endl;
+    }
+
     void onKeyPress(GLFWwindow *window, int key, int, int action, int) {
         Display *display = (Display *) glfwGetWindowUserPointer(window);
         display->pressKey(key, action);
@@ -42,7 +46,17 @@ namespace Nem {
         }
         int average = sum / (int)times.size();
         std::cout << "[Average FPS: " << average << ", Min FPS: " << min
-        << ", Max FPS: " << max << "]" << std::endl;
+        << ", Max FPS: " << max << ", Size: " << times.size() << "]" << std::endl;
+    }
+
+    void Display::skipCycles(long long num) {
+//        stop.lap += num;
+//        if (stop.hasBeen(1000000000)) {
+//            times.push_back(stop.lap);
+//            stop.reset();
+//        }
+        while (processedTick + num > ppu->ticks && ppu->ticks != -1) { }
+        processedTick += num;
     }
 
     void Display::exec() {
@@ -57,13 +71,33 @@ namespace Nem {
                     stopwatch.reset();
                 }
 
-                checkGL("My Test");
+                checkEdits();
 
                 glBindBuffer(GL_ARRAY_BUFFER, nameTable[0]);
-                for (int a = 0; a < 30 * 32; a++) glDrawArrays(GL_TRIANGLES, a * 6, 6);
+                for (int a = 0; a < 240; a++) {
+                    if (a % 8 == 0) glDrawArrays(GL_TRIANGLES, (a / 8) * 32 * 6, 32 * 6);
+                    skipCycles(261 - (a == 0 && ppu->isMaskSet(
+                            PPURegisters::MaskFlags::ShowBKG) && ppu->oddFrame));
+                }
+
+                skipCycles(261 + 1);
+                ppu->registers.status |= PPURegisters::StatusFlags::VBlank;
+                if (ppu->isControlSet(PPURegisters::ControlFlags::VBlankNMI)) ppu->postNMI();
+
+                checkGL("My Test");
 
                 glfwSwapBuffers(window);
                 glClear(GL_COLOR_BUFFER_BIT);
+
+                skipCycles(260 + 261 * 19 + 1);
+
+                ppu->registers.status &= ~PPURegisters::StatusFlags::SprOverflow;
+                ppu->registers.status &= ~PPURegisters::StatusFlags::VBlank;
+                ppu->registers.status &= ~PPURegisters::StatusFlags::SprZeroHit;
+
+                skipCycles(260);
+
+                ppu->oddFrame = !ppu->oddFrame;
             }
         }
         close();
@@ -140,6 +174,8 @@ namespace Nem {
 
     Display::Display(Nem::PPU *ppu) : ppu(ppu) {
         if (!glfwInit()) throw CouldNotCreateWindowException();
+
+        glfwSetErrorCallback(onError);
 
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);

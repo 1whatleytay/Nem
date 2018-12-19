@@ -20,12 +20,12 @@ namespace Nem {
 
     PPUMemory::MappedAddress PPUMemory::mapAddress(Address address) {
         if (address < 0x2000)
-            return { PatternTables, (Address)(address % 0x1000), address / (Address)0x1000 };
+            return { PatternTables, address, address / (Address)0x1000 };
         else if (address < 0x3000)
-            return { ((address - 0x2000) % 0x400 > 0x3C0) ? AttributeTables : NameTables,
+            return { ((address - 0x2000) % 0x400 >= 0x3C0) ? AttributeTables : NameTables,
                      address, (address - 0x2000) / 0x400};
         else if (address < 0x3F00)
-            return { ((address - 0x3000) % 0x400 > 0x3C0) ? AttributeTables : NameTables,
+            return { ((address - 0x3000) % 0x400 >= 0x3C0) ? AttributeTables : NameTables,
                      address, (address - 0x3000) / 0x400};
         else
             return { PPUMemoryRegion::PaletteRam, (Address)((address - 0x3F00) % 0x0020 + 0x3F00) };
@@ -155,7 +155,9 @@ namespace Nem {
         switch (mappedAddress.region) {
             case PatternTables:
                 mapper->setCHRByte(mappedAddress.effectiveAddress, value);
-                edits.patternTable[mappedAddress.index].add(mappedAddress.effectiveAddress / (Address)16);
+                edits.patternTable[mappedAddress.index].add(
+                        (mappedAddress.effectiveAddress - regionIndex(
+                                PatternTables, mappedAddress.index)) / (Address)16);
                 set = true; break;
             case NameTables:
                 arrIndex = mappedAddress.effectiveAddress -

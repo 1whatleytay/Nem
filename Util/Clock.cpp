@@ -32,24 +32,5 @@ namespace Nem {
         lastTime += waitTime;
     }
 
-    void Clock::stopExec() { stopExecution = true; }
-
-    void Clock::exec() {
-        while (!stopExecution) {
-            ppuCallback(ppuTick);
-            ppuTick += 3;
-//            ppuCallback(ppuTick++);
-//            ppuCallback(ppuTick++);
-
-            cpuCallback(cpuTick++);
-
-            waitTicks();
-        }
-    }
-
     Clock::Clock() : lastTime(currentTimeNano()) { }
-    Clock::~Clock() {
-        cpuCallback(-1);
-        ppuCallback(-1);
-    }
 }

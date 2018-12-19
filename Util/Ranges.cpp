@@ -4,6 +4,8 @@
 
 #include "Ranges.h"
 
+#include <iostream>
+
 namespace Nem {
     int Ranges::SubRange::end() {
         return start + count - 1;
@@ -46,7 +48,7 @@ namespace Nem {
                 foundRange = true;
                 break;
             }
-            if (i > ranges[a].start && i < ranges[a].end()) {
+            if (i >= ranges[a].start && i <= ranges[a].end()) {
                 foundRange = true;
                 break;
             }

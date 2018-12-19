@@ -11,6 +11,5 @@ out vec4 outColor;
 const int paletteRam[] = int[]( 0x05, 0x17, 0x29, 0x34 );
 
 void main() {
-    int a = texture(pattern, texCoord).r;
-	outColor = texelFetch(palette, paletteRam[a], 0);
+	outColor = texelFetch(palette, paletteRam[texture(pattern, texCoord).r], 0);
 }

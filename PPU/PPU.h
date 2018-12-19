@@ -135,7 +135,10 @@ namespace Nem {
 
         bool oddFrame = false;
 
+        long long ticks = 0;
+
         void postNMI();
+        void clock();
 
         bool isControlSet(PPURegisters::ControlFlags flags);
         bool isMaskSet(PPURegisters::MaskFlags flags);
@@ -146,7 +149,7 @@ namespace Nem {
 
         void setCPU(Nem::CPU* nCPU);
 
-        PPU(Mapper* mapper);
+        explicit PPU(Mapper* mapper);
     };
 
     struct Color { float red, green, blue; };
