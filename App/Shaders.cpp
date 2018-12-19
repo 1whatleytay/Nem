@@ -90,6 +90,7 @@ namespace Nem {
     }
 
     void Display::checkEdits() {
+        ppu->memory.edits.mutex.lock();
         if (!ppu->memory.edits.nameTable[0].ranges.empty()) {
             std::cout << "Fixing NameTable0." << std::endl;
             glBindBuffer(GL_ARRAY_BUFFER, nameTable[0]);
@@ -150,6 +151,7 @@ namespace Nem {
 
             ppu->memory.edits.patternTable[0].ranges.clear();
         }
+        ppu->memory.edits.mutex.unlock();
         checkGL("Check Edits");
     }
 }
