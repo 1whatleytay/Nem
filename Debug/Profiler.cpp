@@ -76,7 +76,6 @@ namespace Nem {
     }
 
 #ifdef NEM_PROFILE_THREADED
-
     void Profiler::runExecutionAnalysis() {
         while (!config.executionAnalysis.stopAnalysis) {
             while (!config.executionAnalysis.processQueue.empty()) {
@@ -159,9 +158,8 @@ namespace Nem {
             << " NMI: " << makeHex(cpu->memory.getNMIVector()) << "]" << std::endl;
         }
         if (config.printInstructions.doProfile) {
-            std::_Ios_Openmode mode = std::ios::trunc;
-            if (config.printInstructions.binary) mode |= std::ios::binary;
-            config.printInstructions.outFile.open(config.printInstructions.fileName, mode);
+            config.printInstructions.outFile.open(config.printInstructions.fileName,
+                    config.printInstructions.binary ? std::ios::trunc | std::ios::binary : std::ios::trunc);
         }
         if (config.executionAnalysis.doProfile) {
             config.executionAnalysis.executionMemory = new InstructionOccurrences[

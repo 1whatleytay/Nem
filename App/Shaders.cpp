@@ -92,11 +92,13 @@ namespace Nem {
     void Display::checkEdits() {
         ppu->memory.edits.mutex.lock();
         if (!ppu->memory.edits.nameTable[0].ranges.empty()) {
-            std::cout << "Fixing NameTable0." << std::endl;
+//            std::cout << "Fixing NameTable0." << std::endl;
             glBindBuffer(GL_ARRAY_BUFFER, nameTable[0]);
 
             for (const Ranges::SubRange& range : ppu->memory.edits.nameTable[0].ranges) {
                 vector<Vertex> data = vector<Vertex>((unsigned)(range.count * 6));
+
+//                std::cout << "{ ";
 
                 for (int a = 0; a < range.count; a++) {
                     int rangeBegin = a + range.start, index = a * 6;
@@ -106,6 +108,8 @@ namespace Nem {
                     int val = ppu->memory.getByte(PPUMemory::regionIndex(NameTables, 0) + (Address)a);
                     float texStart = (float)(val)/256.0f, texEnd = (float)(val + 1)/256.0f;
 
+//                    std::cout << val << ", ";
+
                     data[index + 0] = { x1 * 2 - 1, y1 * -2 + 1, 0.0f, texStart };
                     data[index + 1] = { x1 * 2 - 1, y2 * -2 + 1, 0.0f, texEnd };
                     data[index + 2] = { x2 * 2 - 1, y1 * -2 + 1, 1.0f, texStart };
@@ -113,6 +117,8 @@ namespace Nem {
                     data[index + 4] = { x1 * 2 - 1, y2 * -2 + 1, 0.0f, texEnd };
                     data[index + 5] = { x2 * 2 - 1, y2 * -2 + 1, 1.0f, texEnd };
                 }
+
+//                std::cout << "}" << std::endl;
 
                 glBufferSubData(GL_ARRAY_BUFFER, range.start * sizeof(Vertex) * 6,
                         data.size() * sizeof(Vertex), &data[0]);
@@ -122,7 +128,7 @@ namespace Nem {
         }
 
         if (!ppu->memory.edits.patternTable[0].ranges.empty()) {
-            std::cout << "Fixing PatternTable0." << std::endl;
+//            std::cout << "Fixing PatternTable0." << std::endl;
             glBindTexture(GL_TEXTURE_2D, patternTable[0]);
 
             for (const Ranges::SubRange& range : ppu->memory.edits.patternTable[0].ranges) {

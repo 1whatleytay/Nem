@@ -41,6 +41,7 @@ namespace Nem {
     }
 
     void Display::calculateTimes() {
+        if (times.empty()) std::cout << "[Sample Empty]" << std::endl;
         int min = INT_MAX, max = INT_MIN;
         int sum = 0;
         for (int a : times) {
@@ -49,12 +50,17 @@ namespace Nem {
             if (a > max) max = a;
         }
         int average = sum / (int)times.size();
-        std::cout << "[Average FPS: " << average << ", Min FPS: " << min
-        << ", Max FPS: " << max << ", Size: " << times.size() << "]" << std::endl;
+        std::cout << "[Average Ticks: " << average << ", Min Ticks: " << min
+        << ", Max Ticks: " << max << ", Size: " << times.size() << "]" << std::endl;
     }
 
     void Display::skipCycles(long long num) {
-        while (processedTick + num > ppu->ticks && ppu->ticks != -1) { }
+        stopwatch.lap += num;
+        if (stopwatch.hasBeen(1000)) {
+            times.push_back(stopwatch.lap);
+            stopwatch.reset();
+        }
+        while (processedTick + num > ppu->ticks) { }
         processedTick += num;
     }
 
@@ -63,12 +69,6 @@ namespace Nem {
             stopwatch.start();
             while (!glfwWindowShouldClose(window)) {
                 glfwPollEvents();
-
-                stopwatch.lap++;
-                if (stopwatch.hasBeen(1000)) {
-                    times.push_back(stopwatch.lap);
-                    stopwatch.reset();
-                }
 
                 checkEdits();
 

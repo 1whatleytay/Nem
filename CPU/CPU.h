@@ -74,7 +74,7 @@ namespace Nem {
             Zero              = 0b00000010,
             Interrupt         = 0b00000100,
             Decimal           = 0b00001000,
-            //BreakCommand      = 0b00110000,
+            BreakCommand      = 0b00110000,
             Overflow          = 0b01000000,
             Negative          = 0b10000000,
         };
@@ -98,8 +98,7 @@ namespace Nem {
 
         void waitCycle();
     public:
-        volatile bool waiting = false;
-        long long cycles = 0;
+        int cycles = 0;
 
 #ifdef NEM_PROFILE
         Profiler* profiler = nullptr;
