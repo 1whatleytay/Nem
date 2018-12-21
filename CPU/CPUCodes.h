@@ -33,7 +33,6 @@ namespace Nem {
         Relative,
         Unknown,
         AddressModeCount,
-        NoRead = 0b10000000,
     };
 
     typedef std::function<bool(CPU* cpu, AddressMode mode, InstArguments arguments)> AddressedInstruction;
@@ -41,6 +40,7 @@ namespace Nem {
         AddressedInstruction function;
         string name;
         AddressMode mode;
+        bool noRead;
     };
 
     int callInstruction(Instruction &inst, CPU *cpu);

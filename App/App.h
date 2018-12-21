@@ -28,6 +28,7 @@ namespace Nem {
     struct Vertex {
         GLfloat x, y;
         GLfloat texX, texY;
+        GLint id;
     };
 
     class Display {
@@ -39,6 +40,8 @@ namespace Nem {
         GLuint sampler;
         GLuint palette, patternTable[2];
         GLuint nameTable[2];
+
+        GLint uniPaletteRam[4];
 
         constexpr static int nesWidth = 256, nesHeight = 240;
         constexpr static float windowAmp = 2.0f;

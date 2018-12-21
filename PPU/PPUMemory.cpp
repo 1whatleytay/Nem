@@ -60,6 +60,8 @@ namespace Nem {
                 return PatternTables + 0x1000 * index;
             case NameTables:
                 return NameTables + 0x400 * index;
+            case AttributeTables:
+                return AttributeTables + 0x400 * index;
             default:
                 return region;
         }
@@ -91,8 +93,7 @@ namespace Nem {
             case AttributeTables:
             case NameTables:
                 return nameTables[getNameTableByIndex(mappedAddress.index)]
-                    [mappedAddress.effectiveAddress -
-                        (mappedAddress.region + mappedAddress.index * 0x400)];
+                    [mappedAddress.effectiveAddress - regionIndex(NameTables, mappedAddress.index)];
             case PaletteRam:
                 switch (mappedAddress.effectiveAddress) {
                     case 0x3F10:
@@ -161,15 +162,13 @@ namespace Nem {
                                 PatternTables, mappedAddress.index)) / (Address)16);
                 set = true; break;
             case NameTables:
-                arrIndex = mappedAddress.effectiveAddress -
-                        (mappedAddress.region + mappedAddress.index * 0x400);
+                arrIndex = mappedAddress.effectiveAddress - regionIndex(NameTables, mappedAddress.index);
                 nameTables[getNameTableIndex(mappedAddress.index)][arrIndex] = value;
                 edits.nameTable[mappedAddress.index].add(arrIndex);
                 set = true; break;
             case AttributeTables:
                 point = mappedAddress.effectiveAddress - (NameTables + mappedAddress.index * 0x400);
-                arrIndex = mappedAddress.effectiveAddress -
-                        (AttributeTables + mappedAddress.index * 0x400);
+                arrIndex = mappedAddress.effectiveAddress - regionIndex(AttributeTables, mappedAddress.index);
                 x = arrIndex % 8; y = arrIndex / 8;
                 nameTables[getNameTableIndex(mappedAddress.index)][point] = value;
                 for (int a = 0; a < 2; a++) {

@@ -3,13 +3,15 @@
 uniform sampler1D palette;
 uniform isampler2D pattern;
 
-flat in int color;
+flat in int paletteId;
 in vec2 texCoord;
 
 out vec4 outColor;
 
-const int paletteRam[] = int[]( 0x05, 0x17, 0x29, 0x34 );
+uniform ivec3 paletteRam[4];
 
 void main() {
-	outColor = texelFetch(palette, paletteRam[texture(pattern, texCoord).r], 0);
+    int tex = texture(pattern, texCoord).r - 1;
+    if (tex == -1) discard;
+	outColor = texelFetch(palette, paletteRam[paletteId][tex], 0);
 }

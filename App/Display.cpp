@@ -69,7 +69,6 @@ namespace Nem {
             stopwatch.start();
             while (!glfwWindowShouldClose(window)) {
                 glfwPollEvents();
-
                 checkEdits();
 
                 glBindBuffer(GL_ARRAY_BUFFER, nameTable[0]);
@@ -142,10 +141,12 @@ namespace Nem {
         glBindBuffer(GL_ARRAY_BUFFER, nameTable[0]);
         glBufferData(GL_ARRAY_BUFFER, 6 * 30 * 32 * sizeof(Vertex), nullptr, GL_DYNAMIC_DRAW);
 
-        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(GLfloat) * 4, (void *)(sizeof(GLfloat) * 0));
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(GLfloat) * 4, (void *)(sizeof(GLfloat) * 2));
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)(sizeof(GLfloat) * 0));
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)(sizeof(GLfloat) * 2));
+        glVertexAttribIPointer(2, 1, GL_INT, sizeof(Vertex), (void *)(sizeof(GLfloat) * 4));
         glEnableVertexAttribArray(0);
         glEnableVertexAttribArray(1);
+        glEnableVertexAttribArray(2);
 
         ppu->memory.edits.fill();
         checkEdits();

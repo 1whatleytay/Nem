@@ -2,12 +2,13 @@
 
 layout(location = 0) in vec2 pos;
 layout(location = 1) in vec2 tex;
+layout(location = 2) in int id;
 
-flat out int color;
+flat out int paletteId;
 out vec2 texCoord;
 
 void main() {
-    color = (gl_VertexID / 6) % 0x40;
+    paletteId = id;
     texCoord = tex;
 	gl_Position = vec4(pos, 0.0, 1.0);
 }

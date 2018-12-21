@@ -162,8 +162,8 @@ namespace Nem {
                     config.printInstructions.binary ? std::ios::trunc | std::ios::binary : std::ios::trunc);
         }
         if (config.executionAnalysis.doProfile) {
-            config.executionAnalysis.executionMemory = new InstructionOccurrences[
-                    config.executionAnalysis.executionMemorySize];
+            config.executionAnalysis.executionMemory = vector<InstructionOccurrences>(
+                    (unsigned long)config.executionAnalysis.executionMemorySize);
         }
 
 #ifdef NEM_PROFILE_THREADED
@@ -172,8 +172,6 @@ namespace Nem {
     }
     Profiler::~Profiler() {
         if (config.printInstructions.doProfile) config.printInstructions.outFile.close();
-
-        delete[] config.executionAnalysis.executionMemory;
 
 #ifdef NEM_PROFILE_THREADED
         config.executionAnalysis.stopAnalysis = true;

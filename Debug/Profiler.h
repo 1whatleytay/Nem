@@ -34,7 +34,7 @@ namespace Nem {
     };
 
     struct ProfilerConfigPrintInstructions {
-        bool doProfile = false;
+        bool doProfile = true;
         bool binary = true;
         string fileName = "/Users/desgroup/Desktop/nem.log.dat";
         std::ofstream outFile;
@@ -54,7 +54,7 @@ namespace Nem {
         int executionMemorySize = 2000;
         int currentInstruction = 0;
         int executionMemorySizeLive = 0;
-        InstructionOccurrences* executionMemory;
+        vector<InstructionOccurrences> executionMemory;
 #ifdef NEM_PROFILE_THREADED
         volatile bool stopAnalysis = false;
         std::queue<DisInst> processQueue;
