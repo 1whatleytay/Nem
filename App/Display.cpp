@@ -17,7 +17,7 @@ namespace Nem {
         display->pressKey(key, action);
     }
 
-    void onResize(GLFWwindow *window, int width, int height) {
+    void onResize(GLFWwindow*, int width, int height) {
         glViewport(0, 0, width, height);
     }
 
@@ -25,12 +25,12 @@ namespace Nem {
         if (mainControllerBindings.find(key) != mainControllerBindings.end()) {
             Byte buttons = (Byte) mainControllerBindings[key];
             if (action == GLFW_PRESS) mainController.press(buttons);
-            else if (action == GLFW_RELEASE) mainController.press(buttons);
+            else if (action == GLFW_RELEASE) mainController.release(buttons);
         }
         if (secondControllerBindings.find(key) != secondControllerBindings.end()) {
             Byte buttons = (Byte) secondControllerBindings[key];
             if (action == GLFW_PRESS) secondController.press(buttons);
-            else if (action == GLFW_RELEASE) secondController.press(buttons);
+            else if (action == GLFW_RELEASE) secondController.release(buttons);
         }
     }
 
@@ -71,7 +71,17 @@ namespace Nem {
                 glfwPollEvents();
                 checkEdits();
 
-                glBindBuffer(GL_ARRAY_BUFFER, nameTable[0]);
+                glActiveTexture(GL_TEXTURE0);
+                glBindTexture(GL_TEXTURE_1D, palette);
+                glActiveTexture(GL_TEXTURE1);
+                glBindTexture(GL_TEXTURE_2D, patternTable[1]);
+
+                glBindBuffer(GL_ARRAY_BUFFER, nameTables[1]);
+
+                checkDebugBinding("Reading from");
+
+//                std::cout << "Reading from buffer: " << buffer << std::endl;
+
                 for (int a = 0; a < 240; a++) {
                     if (a % 8 == 0) glDrawArrays(GL_TRIANGLES, (a / 8) * 32 * 6, 32 * 6);
                     skipCycles(261 - (a == 0 && ppu->isMaskSet(
@@ -137,9 +147,13 @@ namespace Nem {
         }
         glBindSampler(1, sampler);
 
-        glGenBuffers(2, nameTable);
-        glBindBuffer(GL_ARRAY_BUFFER, nameTable[0]);
-        glBufferData(GL_ARRAY_BUFFER, 6 * 30 * 32 * sizeof(Vertex), nullptr, GL_DYNAMIC_DRAW);
+        glGenBuffers(1, &nameTables[0]);
+        glGenBuffers(1, &nameTables[1]);
+//        glGenBuffers(2, nameTables);
+        for (GLuint table : nameTables) {
+            glBindBuffer(GL_ARRAY_BUFFER, table);
+            glBufferData(GL_ARRAY_BUFFER, 6 * 30 * 32 * sizeof(Vertex), nullptr, GL_DYNAMIC_DRAW);
+        }
 
         glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)(sizeof(GLfloat) * 0));
         glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)(sizeof(GLfloat) * 2));
@@ -151,11 +165,16 @@ namespace Nem {
         ppu->memory.edits.fill();
         checkEdits();
 
-        glBindBuffer(GL_ARRAY_BUFFER, nameTable[0]);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_1D, palette);
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, patternTable[0]);
+        glBindBuffer(GL_ARRAY_BUFFER, nameTables[1]);
+        vector<Vertex> vertex(6 * 30 * 32);
+        glGetBufferSubData(GL_ARRAY_BUFFER, 0, 6 * 30 * 32 * sizeof(Vertex), &vertex[0]);
+
+
+//        glBindBuffer(GL_ARRAY_BUFFER, nameTables[0]);
+//        glActiveTexture(GL_TEXTURE0);
+//        glBindTexture(GL_TEXTURE_1D, palette);
+//        glActiveTexture(GL_TEXTURE1);
+//        glBindTexture(GL_TEXTURE_2D, patternTable[0]);
 
         return true;
     }
@@ -164,7 +183,7 @@ namespace Nem {
         calculateTimes();
 
         glDeleteTextures(2, patternTable);
-        glDeleteBuffers(2, nameTable);
+        glDeleteBuffers(2, nameTables);
         glDeleteSamplers(1, &sampler);
         glDeleteVertexArrays(1, &vao);
 

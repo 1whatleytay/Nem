@@ -76,7 +76,7 @@ namespace Nem {
         Byte getOAM(Byte address);
         void setOAM(Byte address, Byte value);
 
-        bool checkNeedsRefresh();
+        void checkNeedsRefresh();
 
         explicit PPUMemory(Mapper* nMapper);
     };

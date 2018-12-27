@@ -25,6 +25,8 @@
 struct GLFWwindow;
 
 namespace Nem {
+    void checkDebugBinding(string name);
+
     struct Vertex {
         GLfloat x, y;
         GLfloat texX, texY;
@@ -39,7 +41,7 @@ namespace Nem {
         GLuint vao;
         GLuint sampler;
         GLuint palette, patternTable[2];
-        GLuint nameTable[2];
+        GLuint nameTables[2];
 
         GLint uniPaletteRam[4];
 

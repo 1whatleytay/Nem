@@ -246,12 +246,11 @@ namespace Nem {
         edits.mutex.unlock();
     }
 
-    bool PPUMemory::checkNeedsRefresh() {
+    void PPUMemory::checkNeedsRefresh() {
         if (mapper->ppuNeedsRefresh) {
             mapper->ppuNeedsRefresh = false;
-            return true;
+            for (Ranges& range : edits.patternTable) range.fill(0, 960);
         }
-        return false;
     }
 
     PPUMemory::PPUMemory(Mapper* nMapper) : mapper(nMapper) { }

@@ -114,7 +114,7 @@ namespace Nem {
         << " Region: " << regionName(mappedAddress.region) << std::endl;
 
 #ifdef NEM_PROFILE
-        cpu->profiler->breakpoint();
+        cpu->profiler->message(Profiler::OutOfBounds);
 #endif
 
         return 0;
@@ -218,7 +218,7 @@ namespace Nem {
         << " Value: " << (int)value << " Region: " << regionName(mappedAddress.region) << std::endl;
 
 #ifdef NEM_PROFILE
-        cpu->profiler->breakpoint();
+        cpu->profiler->message(Profiler::OutOfBounds);
 #endif
     }
 

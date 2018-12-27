@@ -9,6 +9,13 @@
 #include <iostream>
 
 namespace Nem {
+    void checkDebugBinding(string name) {
+        GLuint buffer;
+        glGetIntegerv(GL_ARRAY_BUFFER_BINDING, (GLint*)&buffer);
+
+        std::cout << name << ": " << buffer << std::endl;
+    }
+
     string loadFromFile(const string& file) {
         std::ifstream stream = std::ifstream(file, std::ios::ate | std::ios::in);
         if (!stream.good()) throw ShaderNotFoundException(file);
@@ -94,67 +101,83 @@ namespace Nem {
     }
 
     void Display::checkEdits() {
+        checkGL("In.");
         ppu->memory.edits.mutex.lock();
-        if (!ppu->memory.edits.nameTable[0].ranges.empty()) {
-            glBindBuffer(GL_ARRAY_BUFFER, nameTable[0]);
+        ppu->memory.checkNeedsRefresh();
+        for (int a = 0; a < 1; a++) {
+            if (!ppu->memory.edits.nameTable[a].ranges.empty()) {
+                std::cout << "Update NameTable" << a << std::endl;
+                glBindBuffer(GL_ARRAY_BUFFER, 4);
+                checkGL("PLS ERROR");
 
-            for (const Ranges::SubRange& range : ppu->memory.edits.nameTable[0].ranges) {
-                vector<Vertex> data = vector<Vertex>((unsigned)(range.count * 6));
+                for (const Ranges::SubRange &range : ppu->memory.edits.nameTable[a].ranges) {
+                    vector<Vertex> data = vector<Vertex>((unsigned) (range.count * 6));
 
-                for (int a = 0; a < range.count; a++) {
-                    int rangeBegin = a + range.start, index = a * 6;
-                    int x = rangeBegin % 32, y = rangeBegin / 32;
-                    float x1 = (float) x / 32.0f, y1 = (float) y / 30.0f;
-                    float x2 = (float) (x + 1) / 32.0f, y2 = (float) (y + 1) / 30.0f;
-                    int val = ppu->memory.getByte(PPUMemory::regionIndex(NameTables, 0) + (Address)rangeBegin);
-                    float texStart = (float)(val)/256.0f, texEnd = (float)(val + 1)/256.0f;
-                    int shift = (y / 2 % 2) * 4 + (x / 2 % 2) * 2;
-                    GLint paletteId = ppu->memory.getByte((Address)(PPUMemory::regionIndex(AttributeTables, 0)
-                            + y / 4 * 8 + x / 4)) >> shift & 0b00000011;
+                    for (int r = 0; r < range.count; r++) {
+                        int rangeBegin = r + range.start, index = r * 6;
+                        int x = rangeBegin % 32, y = rangeBegin / 32;
+                        float x1 = (float) x / 32.0f, y1 = (float) y / 30.0f;
+                        float x2 = (float) (x + 1) / 32.0f, y2 = (float) (y + 1) / 30.0f;
+                        int val = ppu->memory.getByte(PPUMemory::regionIndex(NameTables, a) + (Address) rangeBegin);
+//                        std::cout << makeHex(PPUMemory::regionIndex(NameTables, a) + (Address) rangeBegin) << ": " << val << std::endl;
+                        //std::cout << "Index: " << a << " " << makeHex(PPUMemory::regionIndex(NameTables, a) + (Address) rangeBegin) << std::endl;
+                        float texStart = (float) (val) / 256.0f, texEnd = (float) (val + 1) / 256.0f;
+                        int shift = (y / 2 % 2) * 4 + (x / 2 % 2) * 2;
+                        Address pos = (Address)(PPUMemory::regionIndex(AttributeTables, a) + y / 4 * 8 + x / 4);
+                        GLint paletteId = ppu->memory.getByte(pos) >> shift & 0b00000011;
 
-                    data[index + 0] = { x1 * 2 - 1, y1 * -2 + 1, 0.0f, texStart, paletteId };
-                    data[index + 1] = { x1 * 2 - 1, y2 * -2 + 1, 0.0f, texEnd, paletteId };
-                    data[index + 2] = { x2 * 2 - 1, y1 * -2 + 1, 1.0f, texStart, paletteId };
-                    data[index + 3] = { x2 * 2 - 1, y1 * -2 + 1, 1.0f, texStart, paletteId };
-                    data[index + 4] = { x1 * 2 - 1, y2 * -2 + 1, 0.0f, texEnd, paletteId };
-                    data[index + 5] = { x2 * 2 - 1, y2 * -2 + 1, 1.0f, texEnd, paletteId };
+                        data[index + 0] = { x1 * 2 - 1, y1 * -2 + 1, 0.0f, texStart, paletteId };
+                        data[index + 1] = { x1 * 2 - 1, y2 * -2 + 1, 0.0f, texEnd, paletteId };
+                        data[index + 2] = { x2 * 2 - 1, y1 * -2 + 1, 1.0f, texStart, paletteId };
+                        data[index + 3] = { x2 * 2 - 1, y1 * -2 + 1, 1.0f, texStart, paletteId };
+                        data[index + 4] = { x1 * 2 - 1, y2 * -2 + 1, 0.0f, texEnd, paletteId };
+                        data[index + 5] = { x2 * 2 - 1, y2 * -2 + 1, 1.0f, texEnd, paletteId };
+                    }
+                    glBindBuffer(GL_ARRAY_BUFFER, 0);
+                    glBindBuffer(GL_ARRAY_BUFFER, nameTables[1]);
+
+                    checkDebugBinding("Writing to");
+
+                    glBufferSubData(GL_ARRAY_BUFFER, range.start * sizeof(Vertex) * 6,
+                                    data.size() * sizeof(Vertex), &data[0]);
                 }
 
-                glBufferSubData(GL_ARRAY_BUFFER, range.start * sizeof(Vertex) * 6,
-                        data.size() * sizeof(Vertex), &data[0]);
+                ppu->memory.edits.nameTable[a].ranges.clear();
             }
-
-            ppu->memory.edits.nameTable[0].ranges.clear();
         }
+        checkGL("NameTable");
 
-        if (!ppu->memory.edits.patternTable[0].ranges.empty()) {
-            glBindTexture(GL_TEXTURE_2D, patternTable[0]);
+        for (int a = 0; a < 2; a++) {
+            if (!ppu->memory.edits.patternTable[a].ranges.empty()) {
+                glActiveTexture(GL_TEXTURE1);
+                glBindTexture(GL_TEXTURE_2D, patternTable[a]);
 
-            for (const Ranges::SubRange& range : ppu->memory.edits.patternTable[0].ranges) {
-                vector<GLbyte> data = vector<GLbyte>((unsigned)(range.count * 8 * 8));
+                for (const Ranges::SubRange &range : ppu->memory.edits.patternTable[a].ranges) {
+                    vector<GLbyte> data = vector<GLbyte>((unsigned) (range.count * 8 * 8));
 
-                for (Address a = 0; a < range.count; a++) {
-                    for (Address b = 0; b < 8; b++) {
-                        Byte layer0 = ppu->memory.getByte(
-                                PPUMemory::regionIndex(PatternTables, 1) + a * (Address)16 + b);
-                        Byte layer1 = ppu->memory.getByte(
-                                PPUMemory::regionIndex(PatternTables, 1) + a * (Address)16 +
-                                (Address)8 + b);
-                        for (int c = 0; c < 8; c++) {
-                            Byte bit = (Byte)0b10000000 >> c;
-                            data[(a * 8 * 8) + b * 8 + c] =
-                                    (GLbyte)(
-                                            (((layer1 & bit) == bit) << 1) +
-                                            ((layer0 & bit) == bit));
+                    for (Address r = 0; r < range.count; r++) {
+                        for (Address b = 0; b < 8; b++) {
+                            Byte layer0 = ppu->memory.getByte(
+                                    PPUMemory::regionIndex(PatternTables, a) + r * (Address) 16 + b);
+                            Byte layer1 = ppu->memory.getByte(
+                                    PPUMemory::regionIndex(PatternTables, a) + r * (Address) 16 +
+                                    (Address) 8 + b);
+                            for (int c = 0; c < 8; c++) {
+                                Byte bit = (Byte) 0b10000000 >> c;
+                                data[(r * 8 * 8) + b * 8 + c] =
+                                        (GLbyte) (
+                                                (((layer1 & bit) == bit) << 1) +
+                                                ((layer0 & bit) == bit));
+                            }
                         }
                     }
+
+                    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, range.start * 8, 8, range.count * 8,
+                                    GL_RED_INTEGER, GL_BYTE, &data[0]);
                 }
 
-                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, range.start * 8, 8, range.count * 8,
-                        GL_RED_INTEGER, GL_BYTE, &data[0]);
+                ppu->memory.edits.patternTable[0].ranges.clear();
             }
-
-            ppu->memory.edits.patternTable[0].ranges.clear();
         }
 
         if (ppu->memory.edits.paletteRam) {

@@ -64,12 +64,12 @@ namespace Nem {
             if (config.loopDetection.doProfile) {
                 if (config.executionAnalysis.executionMemory[findIndex].occurrences >=
                     config.loopDetection.minimumExecutionCount &&
-                    !config.executionAnalysis.executionMemory[findIndex].loopDetectionHasMarked) {
+                    !config.executionAnalysis.executionMemory[findIndex].marked) {
                     setDebugFlag("profiler-loop-detected", true);
 
                     std::cout << "[Profiler Detected Loop]" << std::endl;
                     std::cout << inst.toString() << std::endl;
-                    config.executionAnalysis.executionMemory[findIndex].loopDetectionHasMarked = true;
+                    config.executionAnalysis.executionMemory[findIndex].marked = true;
                 }
             }
         }
@@ -88,12 +88,7 @@ namespace Nem {
         }
     }
 #endif
-
-    void Profiler::breakpoint() {
-        if (!config.doProfile || noBreakpoint) return;
-
-        std::cout << "[Profiler Breakpoint @" << makeHex(cpu->registers.programCounter) << "]" << std::endl;
-
+    void Profiler::printTrail() {
         if (config.trail.doProfile) {
             std::cout << "[Profiler Trail]" << std::endl;
             while (!config.trail.trailQueue.empty()) {
@@ -104,16 +99,40 @@ namespace Nem {
             if (config.trail.listMemory) {
                 std::cout << "[Profiler Trail List]" << std::endl;
                 cpu->memory.list(cpu->registers.programCounter - (Address)config.trail.listBytesBefore,
-                                  (Address)config.trail.listBytesAfter +
-                                  (Address)config.trail.listBytesBefore + (Address)1);
+                                 (Address)config.trail.listBytesAfter +
+                                 (Address)config.trail.listBytesBefore + (Address)1);
             }
         }
+    }
+
+    void Profiler::message(Nem::Profiler::ProfilerEvent event) {
+        if (!config.doProfile || noError) return;
+
+        switch (event) {
+            case Breakpoint:
+                std::cout << "[Profiler Breakpoint @" << makeHex(cpu->registers.programCounter) << "]" << std::endl;
+                printTrail();
+                break;
+            case OutOfBounds:
+                std::cout << "[Profiler OutOfBounds @" << makeHex(cpu->registers.programCounter) << "]" << std::endl;
+                printTrail();
+                break;
+            case IRQ:
+            case NMI:
+                if (config.nmiRtiMatching.doProfile && config.nmiRtiMatching.nmiOpen) {
+                    std::cout << "[Profile NMI Called While NMI is Open @"
+                              << makeHex(cpu->registers.programCounter) << "]" << std::endl;
+                } else config.nmiRtiMatching.nmiOpen = true;
+                break;
+        }
+
+
     }
 
     void Profiler::analyzeStep() {
         if (!config.doProfile) return;
 
-        noBreakpoint = true;
+        noError = true;
         Byte fetch[3];
         for (Address a = 0; a < 3; a++) fetch[a] = cpu->memory.getByte(cpu->registers.programCounter + a, false);
 
@@ -135,10 +154,12 @@ namespace Nem {
             }
         }
 
-#ifdef NEM_PROFILE_ANALYSIS_FLAG
-        if (!getDebugFlag("profiler-execution-analysis")) return;
-        std::cout << "BAWDSFAS" << std::endl;
-#endif
+        if (config.nmiRtiMatching.doProfile && inst.code == 0x40) {
+            if (!config.nmiRtiMatching.nmiOpen) {
+                std::cout << "[Profile RTI Called While NMI is Closed @"
+                          << makeHex(cpu->registers.programCounter) << "]" << std::endl;
+            } else config.nmiRtiMatching.nmiOpen = false;
+        }
 
 #ifdef NEM_PROFILE_THREADED
         config.executionAnalysis.processQueueMutex.lock();
@@ -147,7 +168,7 @@ namespace Nem {
 #else
         executionAnalysis(inst);
 #endif
-        noBreakpoint = false;
+        noError = false;
     }
 
     Profiler::Profiler(Nem::CPU *nCpu) : cpu(nCpu) {

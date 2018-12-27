@@ -26,7 +26,7 @@ namespace Nem {
         int occurrences = 0;
         int lastReferred = 0;
 
-        bool loopDetectionHasMarked = false;
+        bool marked = false;
     };
 
     struct ProfilerConfigPrintVectors {
@@ -34,7 +34,7 @@ namespace Nem {
     };
 
     struct ProfilerConfigPrintInstructions {
-        bool doProfile = true;
+        bool doProfile = false;
         bool binary = true;
         string fileName = "/Users/desgroup/Desktop/nem.log.dat";
         std::ofstream outFile;
@@ -47,6 +47,11 @@ namespace Nem {
         bool listMemory = false;
         int listBytesBefore = 20;
         int listBytesAfter = 20;
+    };
+
+    struct ProfilerConfigNMIRTIMatching {
+        bool doProfile = true;
+        bool nmiOpen = false;
     };
 
     struct ProfilerConfigExecutionAnalysis {
@@ -73,17 +78,17 @@ namespace Nem {
         ProfilerConfigPrintVectors printVectors;
         ProfilerConfigPrintInstructions printInstructions;
         ProfilerConfigTrail trail;
+        ProfilerConfigNMIRTIMatching nmiRtiMatching;
         ProfilerConfigExecutionAnalysis executionAnalysis;
         ProfilerConfigLoopDetection loopDetection;
     };
 
     class Profiler {
-        // Analyze where most of the CPU time is being spent.
-        // Detect infinite loops
         CPU* cpu;
-        bool noBreakpoint = false;
+        bool noError;
 
         void executionAnalysis(DisInst inst);
+        void printTrail();
 
 #ifdef NEM_PROFILE_THREADED
         void runExecutionAnalysis();
@@ -91,7 +96,14 @@ namespace Nem {
     public:
         ProfilerConfig config;
 
-        void breakpoint();
+        enum ProfilerEvent {
+            Breakpoint,
+            OutOfBounds,
+            NMI,
+            IRQ,
+        };
+
+        void message(ProfilerEvent event);
         void analyzeStep();
 
         explicit Profiler(CPU* nCpu);

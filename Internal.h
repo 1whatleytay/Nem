@@ -20,7 +20,6 @@ typedef uint16_t Address;
 
 //#define NEM_PROFILE
 //#define NEM_PROFILE_THREADED
-//#define NEM_PROFILE_ANALYSIS_FLAG
 
 namespace Nem {
     bool getDebugFlag(string name);

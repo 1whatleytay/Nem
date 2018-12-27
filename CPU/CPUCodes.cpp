@@ -76,7 +76,7 @@ namespace Nem {
                   << " INST: $" << makeHex(cpu->memory.getByte(cpu->registers.programCounter)) << std::endl;
 
 #ifdef NEM_PROFILE
-        cpu->profiler->breakpoint();
+        cpu->profiler->message(Profiler::Breakpoint);
 #endif
 
         cpu->stopExec();
@@ -352,7 +352,7 @@ namespace Nem {
         std::cout << "Break executed. PC: 0x" << makeHex(cpu->registers.programCounter) << std::endl;
 
 #ifdef NEM_PROFILE
-        cpu->profiler->breakpoint();
+        cpu->profiler->message(Profiler::Breakpoint);
 #endif
 
         cpu->stopExec();
@@ -363,7 +363,7 @@ namespace Nem {
         std::cout << "Halt executed. PC: 0x" << makeHex(cpu->registers.programCounter) << std::endl;
 
 #ifdef NEM_PROFILE
-        cpu->profiler->breakpoint();
+        cpu->profiler->message(Profiler::Breakpoint);
 #endif
 
         cpu->stopExec();

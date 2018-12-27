@@ -49,6 +49,9 @@ namespace Nem {
     }
     void CPU::processNMI() {
         if (nmi) {
+#ifdef NEM_PROFILE
+            profiler->message(Profiler::NMI);
+#endif
             pushAddress(registers.programCounter);
             pushByte(registers.status);
             registers.programCounter = memory.getNMIVector();
@@ -58,7 +61,9 @@ namespace Nem {
     }
 
     //void CPU::postIRQ() { irq = true; }
-    void CPU::postNMI() { nmi = true; }
+    void CPU::postNMI() {
+        nmi = true;
+    }
 
     Byte CPU::thisByte(bool cycle) {
         return memory.getByte(registers.programCounter, cycle);
