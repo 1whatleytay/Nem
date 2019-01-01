@@ -38,10 +38,9 @@ namespace Nem {
         GLFWwindow* window = nullptr;
 
         GLuint program;
-        GLuint vao;
         GLuint sampler;
         GLuint palette, patternTable[2];
-        GLuint nameTables[2];
+        GLuint nameTableBuffers[2], nameTableVAOs[2];
 
         GLint uniPaletteRam[4];
 

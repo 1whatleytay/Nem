@@ -76,11 +76,10 @@ namespace Nem {
                 glActiveTexture(GL_TEXTURE1);
                 glBindTexture(GL_TEXTURE_2D, patternTable[1]);
 
-                glBindBuffer(GL_ARRAY_BUFFER, nameTables[1]);
+                glBindVertexArray(nameTableVAOs[0]);
+                glBindBuffer(GL_ARRAY_BUFFER, nameTableBuffers[0]);
 
-                checkDebugBinding("Reading from");
-
-//                std::cout << "Reading from buffer: " << buffer << std::endl;
+//                checkDebugBinding("Reading from");
 
                 for (int a = 0; a < 240; a++) {
                     if (a % 8 == 0) glDrawArrays(GL_TRIANGLES, (a / 8) * 32 * 6, 32 * 6);
@@ -122,9 +121,6 @@ namespace Nem {
         loadShaders();
         glUseProgram(program);
 
-        glGenVertexArrays(1, &vao);
-        glBindVertexArray(vao);
-
         glGenSamplers(1, &sampler);
         glSamplerParameteri(sampler, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glSamplerParameteri(sampler, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -147,34 +143,23 @@ namespace Nem {
         }
         glBindSampler(1, sampler);
 
-        glGenBuffers(1, &nameTables[0]);
-        glGenBuffers(1, &nameTables[1]);
-//        glGenBuffers(2, nameTables);
-        for (GLuint table : nameTables) {
-            glBindBuffer(GL_ARRAY_BUFFER, table);
+        glGenBuffers(2, nameTableBuffers);
+        glGenVertexArrays(2, nameTableVAOs);
+        for (int a = 0; a < 2; a++) {
+            glBindVertexArray(nameTableVAOs[a]);
+            glBindBuffer(GL_ARRAY_BUFFER, nameTableBuffers[a]);
             glBufferData(GL_ARRAY_BUFFER, 6 * 30 * 32 * sizeof(Vertex), nullptr, GL_DYNAMIC_DRAW);
-        }
 
-        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)(sizeof(GLfloat) * 0));
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)(sizeof(GLfloat) * 2));
-        glVertexAttribIPointer(2, 1, GL_INT, sizeof(Vertex), (void *)(sizeof(GLfloat) * 4));
-        glEnableVertexAttribArray(0);
-        glEnableVertexAttribArray(1);
-        glEnableVertexAttribArray(2);
+            glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)(sizeof(GLfloat) * 0));
+            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)(sizeof(GLfloat) * 2));
+            glVertexAttribIPointer(2, 1, GL_INT, sizeof(Vertex), (void *)(sizeof(GLfloat) * 4));
+            glEnableVertexAttribArray(0);
+            glEnableVertexAttribArray(1);
+            glEnableVertexAttribArray(2);
+        }
 
         ppu->memory.edits.fill();
         checkEdits();
-
-        glBindBuffer(GL_ARRAY_BUFFER, nameTables[1]);
-        vector<Vertex> vertex(6 * 30 * 32);
-        glGetBufferSubData(GL_ARRAY_BUFFER, 0, 6 * 30 * 32 * sizeof(Vertex), &vertex[0]);
-
-
-//        glBindBuffer(GL_ARRAY_BUFFER, nameTables[0]);
-//        glActiveTexture(GL_TEXTURE0);
-//        glBindTexture(GL_TEXTURE_1D, palette);
-//        glActiveTexture(GL_TEXTURE1);
-//        glBindTexture(GL_TEXTURE_2D, patternTable[0]);
 
         return true;
     }
@@ -183,9 +168,12 @@ namespace Nem {
         calculateTimes();
 
         glDeleteTextures(2, patternTable);
-        glDeleteBuffers(2, nameTables);
+        glDeleteTextures(1, &palette);
+
+        glDeleteVertexArrays(2, nameTableVAOs);
+        glDeleteBuffers(2, nameTableBuffers);
+
         glDeleteSamplers(1, &sampler);
-        glDeleteVertexArrays(1, &vao);
 
         glDeleteProgram(program);
     }

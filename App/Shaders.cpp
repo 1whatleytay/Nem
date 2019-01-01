@@ -101,14 +101,11 @@ namespace Nem {
     }
 
     void Display::checkEdits() {
-        checkGL("In.");
         ppu->memory.edits.mutex.lock();
         ppu->memory.checkNeedsRefresh();
-        for (int a = 0; a < 1; a++) {
+        for (int a = 0; a < 2; a++) {
             if (!ppu->memory.edits.nameTable[a].ranges.empty()) {
                 std::cout << "Update NameTable" << a << std::endl;
-                glBindBuffer(GL_ARRAY_BUFFER, 4);
-                checkGL("PLS ERROR");
 
                 for (const Ranges::SubRange &range : ppu->memory.edits.nameTable[a].ranges) {
                     vector<Vertex> data = vector<Vertex>((unsigned) (range.count * 6));
@@ -133,10 +130,10 @@ namespace Nem {
                         data[index + 4] = { x1 * 2 - 1, y2 * -2 + 1, 0.0f, texEnd, paletteId };
                         data[index + 5] = { x2 * 2 - 1, y2 * -2 + 1, 1.0f, texEnd, paletteId };
                     }
-                    glBindBuffer(GL_ARRAY_BUFFER, 0);
-                    glBindBuffer(GL_ARRAY_BUFFER, nameTables[1]);
+                    glBindVertexArray(nameTableVAOs[a]);
+                    glBindBuffer(GL_ARRAY_BUFFER, nameTableBuffers[a]);
 
-                    checkDebugBinding("Writing to");
+//                    checkDebugBinding("Writing to");
 
                     glBufferSubData(GL_ARRAY_BUFFER, range.start * sizeof(Vertex) * 6,
                                     data.size() * sizeof(Vertex), &data[0]);
