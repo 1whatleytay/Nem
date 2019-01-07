@@ -10,6 +10,10 @@
 #include <iostream>
 
 namespace Nem {
+    int shiftAttribute(Byte val, int x, int y) {
+        int shift = (y / 2 % 2) * 4 + (x / 2 % 2) * 2;
+        return val >> shift;
+    }
 
     bool PPU::isControlSet(PPURegisters::ControlFlags flags) {
         return (registers.control & flags) == flags;

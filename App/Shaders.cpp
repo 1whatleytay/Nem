@@ -9,12 +9,6 @@
 #include <iostream>
 
 namespace Nem {
-    void checkDebugBinding(string name) {
-        GLuint buffer;
-        glGetIntegerv(GL_ARRAY_BUFFER_BINDING, (GLint*)&buffer);
-
-        std::cout << name << ": " << buffer << std::endl;
-    }
 
     string loadFromFile(const string& file) {
         std::ifstream stream = std::ifstream(file, std::ios::ate | std::ios::in);
@@ -105,7 +99,6 @@ namespace Nem {
         ppu->memory.checkNeedsRefresh();
         for (int a = 0; a < 2; a++) {
             if (!ppu->memory.edits.nameTable[a].ranges.empty()) {
-                std::cout << "Update NameTable" << a << std::endl;
 
                 for (const Ranges::SubRange &range : ppu->memory.edits.nameTable[a].ranges) {
                     vector<Vertex> data = vector<Vertex>((unsigned) (range.count * 6));
@@ -116,12 +109,9 @@ namespace Nem {
                         float x1 = (float) x / 32.0f, y1 = (float) y / 30.0f;
                         float x2 = (float) (x + 1) / 32.0f, y2 = (float) (y + 1) / 30.0f;
                         int val = ppu->memory.getByte(PPUMemory::regionIndex(NameTables, a) + (Address) rangeBegin);
-//                        std::cout << makeHex(PPUMemory::regionIndex(NameTables, a) + (Address) rangeBegin) << ": " << val << std::endl;
-                        //std::cout << "Index: " << a << " " << makeHex(PPUMemory::regionIndex(NameTables, a) + (Address) rangeBegin) << std::endl;
                         float texStart = (float) (val) / 256.0f, texEnd = (float) (val + 1) / 256.0f;
-                        int shift = (y / 2 % 2) * 4 + (x / 2 % 2) * 2;
                         Address pos = (Address)(PPUMemory::regionIndex(AttributeTables, a) + y / 4 * 8 + x / 4);
-                        GLint paletteId = ppu->memory.getByte(pos) >> shift & 0b00000011;
+                        GLint paletteId = shiftAttribute(ppu->memory.getByte(pos), x, y) & 0b00000011;
 
                         data[index + 0] = { x1 * 2 - 1, y1 * -2 + 1, 0.0f, texStart, paletteId };
                         data[index + 1] = { x1 * 2 - 1, y2 * -2 + 1, 0.0f, texEnd, paletteId };
@@ -132,9 +122,7 @@ namespace Nem {
                     }
                     glBindVertexArray(nameTableVAOs[a]);
                     glBindBuffer(GL_ARRAY_BUFFER, nameTableBuffers[a]);
-
-//                    checkDebugBinding("Writing to");
-
+                    
                     glBufferSubData(GL_ARRAY_BUFFER, range.start * sizeof(Vertex) * 6,
                                     data.size() * sizeof(Vertex), &data[0]);
                 }
@@ -142,7 +130,6 @@ namespace Nem {
                 ppu->memory.edits.nameTable[a].ranges.clear();
             }
         }
-        checkGL("NameTable");
 
         for (int a = 0; a < 2; a++) {
             if (!ppu->memory.edits.patternTable[a].ranges.empty()) {
@@ -190,6 +177,5 @@ namespace Nem {
         }
 
         ppu->memory.edits.mutex.unlock();
-        checkGL("Check Edits");
     }
 }

@@ -35,8 +35,8 @@ namespace Nem {
 
     struct ProfilerConfigPrintInstructions {
         bool doProfile = false;
-        bool binary = true;
-        string fileName = "/Users/desgroup/Desktop/nem.log.dat";
+        bool binary = false;
+        string fileName = "/Users/desgroup/Desktop/nem.log.txt";
         std::ofstream outFile;
     };
 
@@ -50,7 +50,7 @@ namespace Nem {
     };
 
     struct ProfilerConfigNMIRTIMatching {
-        bool doProfile = true;
+        bool doProfile = false;
         bool nmiOpen = false;
     };
 

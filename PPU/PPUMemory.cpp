@@ -167,13 +167,13 @@ namespace Nem {
                 edits.nameTable[mappedAddress.index].add(arrIndex);
                 set = true; break;
             case AttributeTables:
-                point = mappedAddress.effectiveAddress - (NameTables + mappedAddress.index * 0x400);
+                point = mappedAddress.effectiveAddress - regionIndex(NameTables, mappedAddress.index);
                 arrIndex = mappedAddress.effectiveAddress - regionIndex(AttributeTables, mappedAddress.index);
                 x = arrIndex % 8; y = arrIndex / 8;
                 nameTables[getNameTableIndex(mappedAddress.index)][point] = value;
-                for (int a = 0; a < 2; a++) {
-                    for (int b = 0; b < 2 && y + b < 8; b++) {
-                        edits.nameTable[0].add(x + a + (y + b) * 32);
+                for (int a = 0; a < 4; a++) {
+                    for (int b = 0; b < 4 && y * 4 + b < 30; b++) {
+                        edits.nameTable[mappedAddress.index].add(x * 4 + a + (y * 4 + b) * 32);
                     }
                 }
                 set = true; break;

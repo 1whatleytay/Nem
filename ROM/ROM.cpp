@@ -96,12 +96,12 @@ namespace Nem {
     }
 
     string ROM::getRomName() const {
-        unsigned long lastIndexFront = romPath.find_last_of('/'), lastIndexBack = romPath.find_last_of('\\');
+        size_t lastIndexFront = romPath.find_last_of('/'), lastIndexBack = romPath.find_last_of('\\');
         if (lastIndexFront == string::npos) lastIndexFront = 0;
         else lastIndexFront++;
         if (lastIndexBack == string::npos) lastIndexBack = 0;
         else lastIndexBack++;
-        unsigned long lastIndex = std::max(lastIndexFront, lastIndexBack);
+        size_t lastIndex = std::max(lastIndexFront, lastIndexBack);
         return romPath.substr(lastIndex, romPath.length() - lastIndex);
     }
 

@@ -125,8 +125,6 @@ namespace Nem {
                 } else config.nmiRtiMatching.nmiOpen = true;
                 break;
         }
-
-
     }
 
     void Profiler::analyzeStep() {

@@ -15,6 +15,8 @@ namespace Nem {
     class Mapper;
     class Clock;
 
+    int shiftAttribute(Byte var, int x, int y);
+
     struct PPUPalette { Byte colorA, colorB, colorC; };
 
     struct PPUPaletteMemory {

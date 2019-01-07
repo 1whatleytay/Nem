@@ -56,10 +56,12 @@ namespace Nem {
 
     void Display::skipCycles(long long num) {
         stopwatch.lap += num;
+
         if (stopwatch.hasBeen(1000)) {
             times.push_back(stopwatch.lap);
             stopwatch.reset();
         }
+
         while (processedTick + num > ppu->ticks) { }
         processedTick += num;
     }
@@ -78,8 +80,6 @@ namespace Nem {
 
                 glBindVertexArray(nameTableVAOs[0]);
                 glBindBuffer(GL_ARRAY_BUFFER, nameTableBuffers[0]);
-
-//                checkDebugBinding("Reading from");
 
                 for (int a = 0; a < 240; a++) {
                     if (a % 8 == 0) glDrawArrays(GL_TRIANGLES, (a / 8) * 32 * 6, 32 * 6);

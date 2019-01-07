@@ -16,8 +16,6 @@ typedef uint16_t Address;
 
 #define kilobyte(a) a * 1024
 
-//#define YIELD_ON_TICK
-
 //#define NEM_PROFILE
 //#define NEM_PROFILE_THREADED
 
