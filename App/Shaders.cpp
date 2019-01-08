@@ -9,7 +9,6 @@
 #include <iostream>
 
 namespace Nem {
-
     string loadFromFile(const string& file) {
         std::ifstream stream = std::ifstream(file, std::ios::ate | std::ios::in);
         if (!stream.good()) throw ShaderNotFoundException(file);
@@ -89,8 +88,14 @@ namespace Nem {
         glUniform1i(paletteSampler, 0);
         glUniform1i(patternSampler, 1);
 
+        uniPaletteRamIndex = glGetUniformLocation(program, "paletteIndex");
+        glUniform1i(uniPaletteRamIndex, 0);
+
         for (int a = 0; a < 4; a++) {
-            uniPaletteRam[a] = glGetUniformLocation(program, ("paletteRam[" + std::to_string(a) + "]").c_str());
+            uniBkgPaletteRam[a] = glGetUniformLocation(program, ("paletteRam[" + std::to_string(a) + "]").c_str());
+        }
+        for (int a = 0; a < 4; a++) {
+            uniSprPaletteRam[a] = glGetUniformLocation(program, ("paletteRam[" + std::to_string(a + 4) + "]").c_str());
         }
     }
 
@@ -99,6 +104,8 @@ namespace Nem {
         ppu->memory.checkNeedsRefresh();
         for (int a = 0; a < 2; a++) {
             if (!ppu->memory.edits.nameTable[a].ranges.empty()) {
+                glBindVertexArray(nameTableVAOs[a]);
+                glBindBuffer(GL_ARRAY_BUFFER, nameTableBuffers[a]);
 
                 for (const Ranges::SubRange &range : ppu->memory.edits.nameTable[a].ranges) {
                     vector<Vertex> data = vector<Vertex>((unsigned) (range.count * 6));
@@ -120,14 +127,48 @@ namespace Nem {
                         data[index + 4] = { x1 * 2 - 1, y2 * -2 + 1, 0.0f, texEnd, paletteId };
                         data[index + 5] = { x2 * 2 - 1, y2 * -2 + 1, 1.0f, texEnd, paletteId };
                     }
-                    glBindVertexArray(nameTableVAOs[a]);
-                    glBindBuffer(GL_ARRAY_BUFFER, nameTableBuffers[a]);
                     
                     glBufferSubData(GL_ARRAY_BUFFER, range.start * sizeof(Vertex) * 6,
-                                    data.size() * sizeof(Vertex), &data[0]);
+                            data.size() * sizeof(Vertex), &data[0]);
                 }
 
                 ppu->memory.edits.nameTable[a].ranges.clear();
+            }
+        }
+
+        if (!ppu->memory.edits.oam.ranges.empty()) {
+            glBindVertexArray(oamVAO);
+            glBindBuffer(GL_ARRAY_BUFFER, oamBuffer);
+
+            for (const Ranges::SubRange &range : ppu->memory.edits.oam.ranges) {
+                vector<Vertex> data = vector<Vertex>((unsigned) (range.count * 6));
+
+                for (int r = 0; r < range.count; r++) {
+                    int rangeBegin = r + range.start, index = r * 6;
+                    int x = ppu->memory.getOAM((Byte) (rangeBegin * 4 + 3));
+                    int y = ppu->memory.getOAM((Byte) (rangeBegin * 4 + 0));
+                    float x1 = (float) x / 256.0f, y1 = (float) y / 240.0f;
+                    float x2 = (float) (x + 8) / 256.0f, y2 = (float) (y + 8) / 240.0f;
+                    Byte flags = ppu->memory.getOAM((Byte) (rangeBegin * 4 + 2));
+                    int paletteId = flags & 0b00000011;
+                    bool flipX = (flags & 0b01000000) == 0b01000000, flipY = (flags & 0b10000000) == 0b10000000;
+                    int texPick = ppu->memory.getOAM((Byte) (rangeBegin * 4 + 1));
+                    float texStart = (float) (texPick + (flipY ? 1 : 0)) / 256.0f;
+                    float texEnd = (float) (texPick + (flipY ? 0 : 1)) / 256.0f;
+                    float base1 = flipX ? 1.0f : 0.0f, base2 = flipX ? 0.0f : 1.0f;
+
+                    data[index + 0] = { x1 * 2 - 1, y1 * -2 + 1, base1, texStart, paletteId };
+                    data[index + 1] = { x1 * 2 - 1, y2 * -2 + 1, base1, texEnd, paletteId };
+                    data[index + 2] = { x2 * 2 - 1, y1 * -2 + 1, base2, texStart, paletteId };
+                    data[index + 3] = { x2 * 2 - 1, y1 * -2 + 1, base2, texStart, paletteId };
+                    data[index + 4] = { x1 * 2 - 1, y2 * -2 + 1, base1, texEnd, paletteId };
+                    data[index + 5] = { x2 * 2 - 1, y2 * -2 + 1, base2, texEnd, paletteId };
+                }
+
+                glBufferSubData(GL_ARRAY_BUFFER, range.start * sizeof(Vertex) * 6,
+                        data.size() * sizeof(Vertex), &data[0]);
+
+                ppu->memory.edits.oam.ranges.clear();
             }
         }
 
@@ -160,7 +201,7 @@ namespace Nem {
                                     GL_RED_INTEGER, GL_BYTE, &data[0]);
                 }
 
-                ppu->memory.edits.patternTable[0].ranges.clear();
+                ppu->memory.edits.patternTable[a].ranges.clear();
             }
         }
 
@@ -168,10 +209,16 @@ namespace Nem {
             Color clearColor = palette2C02[ppu->memory.palettes.clearColor];
             glClearColor(clearColor.red, clearColor.green, clearColor.blue, 1);
             for (int a = 0; a < 4; a++) {
-                glUniform3i(uniPaletteRam[a],
+                glUniform3i(uniBkgPaletteRam[a],
                         ppu->memory.palettes.background[a].colorA,
                         ppu->memory.palettes.background[a].colorB,
                         ppu->memory.palettes.background[a].colorC);
+            }
+            for (int a = 0; a < 4; a++) {
+                glUniform3i(uniSprPaletteRam[a],
+                            ppu->memory.palettes.sprite[a].colorA,
+                            ppu->memory.palettes.sprite[a].colorB,
+                            ppu->memory.palettes.sprite[a].colorC);
             }
             ppu->memory.edits.paletteRam = false;
         }

@@ -56,7 +56,7 @@ namespace Nem {
                         return (Byte)(ppu->registers.status & ~0b01000000) |
                             (Byte)(0b01000000 * ppu->registers.flipSpriteZero);
 #else
-                        return ppu->registers->status;
+                        return ppu->registers.status;
 #endif
                     case 0x2004:
                         return ppu->getOAM();

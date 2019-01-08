@@ -18,7 +18,27 @@ namespace Nem {
     }
 
     void onResize(GLFWwindow*, int width, int height) {
-        glViewport(0, 0, width, height);
+        glViewport(0, 0, width * 2, height * 2);
+    }
+
+    void bindCombo(GLuint buffer, GLuint vao) {
+        glBindVertexArray(vao);
+        glBindBuffer(GL_ARRAY_BUFFER, buffer);
+    }
+
+    void bindTexture(int index, GLenum target, GLuint texture) {
+        glActiveTexture(GL_TEXTURE0 + (GLenum)index);
+        glBindTexture(target, texture);
+    }
+
+    void setBufferTypeVertex() {
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)(sizeof(GLfloat) * 0));
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)(sizeof(GLfloat) * 2));
+        glVertexAttribIPointer(2, 1, GL_INT, sizeof(Vertex), (void *)(sizeof(GLfloat) * 4));
+
+        glEnableVertexAttribArray(0);
+        glEnableVertexAttribArray(1);
+        glEnableVertexAttribArray(2);
     }
 
     void Display::pressKey(int key, int action) {
@@ -73,19 +93,23 @@ namespace Nem {
                 glfwPollEvents();
                 checkEdits();
 
-                glActiveTexture(GL_TEXTURE0);
-                glBindTexture(GL_TEXTURE_1D, palette);
-                glActiveTexture(GL_TEXTURE1);
-                glBindTexture(GL_TEXTURE_2D, patternTable[1]);
+                bindTexture(0, GL_TEXTURE_1D, palette);
+                bindTexture(1, GL_TEXTURE_2D, patternTable[1]);
 
-                glBindVertexArray(nameTableVAOs[0]);
-                glBindBuffer(GL_ARRAY_BUFFER, nameTableBuffers[0]);
+                bindCombo(nameTableBuffers[0], nameTableVAOs[0]);
 
+                glUniform1i(uniPaletteRamIndex, 0);
                 for (int a = 0; a < 240; a++) {
+                    if (a == 32) ppu->registers.status |= PPURegisters::StatusFlags::SprZeroHit;
                     if (a % 8 == 0) glDrawArrays(GL_TRIANGLES, (a / 8) * 32 * 6, 32 * 6);
                     skipCycles(261 - (a == 0 && ppu->isMaskSet(
                             PPURegisters::MaskFlags::ShowBKG) && ppu->oddFrame));
                 }
+
+                glUniform1i(uniPaletteRamIndex, 1);
+                bindTexture(1, GL_TEXTURE_2D, patternTable[0]);
+                bindCombo(oamBuffer, oamVAO);
+                glDrawArrays(GL_TRIANGLES, 0, 6 * 64);
 
                 skipCycles(261 + 1);
                 ppu->registers.status |= PPURegisters::StatusFlags::VBlank;
@@ -146,17 +170,18 @@ namespace Nem {
         glGenBuffers(2, nameTableBuffers);
         glGenVertexArrays(2, nameTableVAOs);
         for (int a = 0; a < 2; a++) {
-            glBindVertexArray(nameTableVAOs[a]);
-            glBindBuffer(GL_ARRAY_BUFFER, nameTableBuffers[a]);
+            bindCombo(nameTableBuffers[a], nameTableVAOs[a]);
             glBufferData(GL_ARRAY_BUFFER, 6 * 30 * 32 * sizeof(Vertex), nullptr, GL_DYNAMIC_DRAW);
 
-            glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)(sizeof(GLfloat) * 0));
-            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)(sizeof(GLfloat) * 2));
-            glVertexAttribIPointer(2, 1, GL_INT, sizeof(Vertex), (void *)(sizeof(GLfloat) * 4));
-            glEnableVertexAttribArray(0);
-            glEnableVertexAttribArray(1);
-            glEnableVertexAttribArray(2);
+            setBufferTypeVertex();
         }
+
+        glGenBuffers(1, &oamBuffer);
+        glGenVertexArrays(1, &oamVAO);
+        bindCombo(oamBuffer, oamVAO);
+        glBufferData(GL_ARRAY_BUFFER, 6 * 64 * sizeof(Vertex), nullptr, GL_DYNAMIC_DRAW);
+
+        setBufferTypeVertex();
 
         ppu->memory.edits.fill();
         checkEdits();
@@ -167,11 +192,14 @@ namespace Nem {
     void Display::close() {
         calculateTimes();
 
-        glDeleteTextures(2, patternTable);
-        glDeleteTextures(1, &palette);
+        glDeleteVertexArrays(1, &oamVAO);
+        glDeleteBuffers(1, &oamBuffer);
 
         glDeleteVertexArrays(2, nameTableVAOs);
         glDeleteBuffers(2, nameTableBuffers);
+
+        glDeleteTextures(2, patternTable);
+        glDeleteTextures(1, &palette);
 
         glDeleteSamplers(1, &sampler);
 

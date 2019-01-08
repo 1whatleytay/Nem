@@ -41,8 +41,10 @@ namespace Nem {
         GLuint sampler;
         GLuint palette, patternTable[2];
         GLuint nameTableBuffers[2], nameTableVAOs[2];
+        GLuint oamBuffer, oamVAO;
 
-        GLint uniPaletteRam[4];
+        GLint uniPaletteRamIndex;
+        GLint uniBkgPaletteRam[4], uniSprPaletteRam[4];
 
         constexpr static int nesWidth = 256, nesHeight = 240;
         constexpr static float windowAmp = 2.0f;

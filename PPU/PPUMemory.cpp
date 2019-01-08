@@ -238,11 +238,12 @@ namespace Nem {
     }
 
     Byte PPUMemory::getOAM(Byte address) {
-        return oam[address]; }
+        return oam[address];
+    }
     void PPUMemory::setOAM(Byte address, Byte value) {
         oam[address] = value;
         edits.mutex.lock();
-        edits.oam.add(address);
+        edits.oam.add(address / 4);
         edits.mutex.unlock();
     }
 
@@ -258,7 +259,7 @@ namespace Nem {
     void PPUMemoryEdits::fill() {
         for (Ranges& table : patternTable) table.fill(0, 256);
         for (Ranges& table : nameTable) table.fill(0, 0x3C0);
-        oam.fill(0, 256);
+        oam.fill(0, 64);
 
         paletteRam = true;
         registers = true;

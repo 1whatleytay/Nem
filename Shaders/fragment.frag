@@ -8,10 +8,11 @@ in vec2 texCoord;
 
 out vec4 outColor;
 
-uniform ivec3 paletteRam[4];
+uniform int paletteIndex;
+uniform ivec3 paletteRam[8];
 
 void main() {
     int tex = texture(pattern, texCoord).r - 1;
     if (tex == -1) discard;
-	outColor = texelFetch(palette, paletteRam[paletteId][tex], 0);
+	outColor = texelFetch(palette, paletteRam[paletteId + paletteIndex * 4][tex], 0);
 }
