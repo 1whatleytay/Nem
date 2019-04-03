@@ -124,6 +124,22 @@ namespace Nem {
         return makeAddress(getByte(address, cycle), getByte(address + (Address)1, cycle));
     }
 
+    bool bitSet(int val, int bit) {
+        return (val & bit) == bit;
+    }
+
+    string parseVal(Byte value) {
+        string result = "";
+        result += bitSet(value, PPURegisters::ControlFlags::VBlankNMI) ? "V" : ".";
+        result += bitSet(value, PPURegisters::ControlFlags::PPUMasterSlave) ? "M" : "S";
+        result += bitSet(value, PPURegisters::ControlFlags::SprSize) ? "B" : "t";
+        result += bitSet(value, PPURegisters::ControlFlags::BkgPatternTable) ? "B" : "b";
+        result += bitSet(value, PPURegisters::ControlFlags::SprPatternTable) ? "S" : "s";
+        result += bitSet(value, PPURegisters::ControlFlags::Increment) ? "I" : ".";
+        result += " " + std::to_string(value & PPURegisters::ControlFlags::NameTable);
+        return result;
+    }
+
     void CPUMemory::setByte(Address address, Byte value, bool cycle) {
         MappedAddress mappedAddress = mapAddress(address);
         if (cycle) cpu->writeCycle();
@@ -134,6 +150,7 @@ namespace Nem {
             case PPUIO:
                 switch (mappedAddress.effectiveAddress) {
                     case 0x2000:
+                        std::cout << "Writing " << parseVal(value) << " to control [CYC: " << cpu->cycles << " PC: " << makeHex(cpu->registers.programCounter) << "]" << std::endl;
                         ppu->registers.control = value;
                         return;
                     case 0x2001:

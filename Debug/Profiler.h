@@ -30,7 +30,7 @@ namespace Nem {
     };
 
     struct ProfilerConfigPrintVectors {
-        bool doProfile = true;
+        bool doProfile = false;
     };
 
     struct ProfilerConfigPrintInstructions {
@@ -41,7 +41,7 @@ namespace Nem {
     };
 
     struct ProfilerConfigTrail {
-        bool doProfile = true;
+        bool doProfile = false;
         int trailLength = 100;
         std::queue<DisInst> trailQueue;
         bool listMemory = false;
@@ -73,6 +73,14 @@ namespace Nem {
         int minimumExecutionCount = 1000;
     };
 
+    struct ProfilerConfigBreakpoints {
+        bool doProfile = false;
+        vector<Address> breakpoints = {
+                0x817e,
+                0x816f
+        };
+    };
+
     struct ProfilerConfig {
         bool doProfile = true;
         ProfilerConfigPrintVectors printVectors;
@@ -81,13 +89,14 @@ namespace Nem {
         ProfilerConfigNMIRTIMatching nmiRtiMatching;
         ProfilerConfigExecutionAnalysis executionAnalysis;
         ProfilerConfigLoopDetection loopDetection;
+        ProfilerConfigBreakpoints breakpoints;
     };
 
     class Profiler {
         CPU* cpu;
         bool noError;
 
-        void executionAnalysis(DisInst inst);
+        void executionAnalysis(const DisInst &inst);
         void printTrail();
 
 #ifdef NEM_PROFILE_THREADED

@@ -11,7 +11,15 @@
 #include <iostream>
 
 namespace Nem {
-    void Profiler::executionAnalysis(DisInst inst) {
+    void Profiler::executionAnalysis(const DisInst &inst) {
+        if (config.breakpoints.doProfile) {
+            if (std::find(config.breakpoints.breakpoints.begin(), config.breakpoints.breakpoints.end(),
+                    inst.registers.programCounter) != config.breakpoints.breakpoints.end()) {
+                std::cout << "[Breakpoint at " << makeHex(inst.registers.programCounter) << "]" << std::endl;
+                // Breakpoint Next Line
+                message(Breakpoint);
+            }
+        }
         if (config.executionAnalysis.doProfile) {
             int bidIndex = -1;
             if (config.executionAnalysis.executionMemorySizeLive >= config.executionAnalysis.executionMemorySize) {

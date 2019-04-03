@@ -25,7 +25,7 @@
 struct GLFWwindow;
 
 namespace Nem {
-    void checkDebugBinding(string name);
+    extern const float resizeScale;
 
     struct Vertex {
         GLfloat x, y;
@@ -44,6 +44,7 @@ namespace Nem {
         GLuint oamBuffer, oamVAO;
 
         GLint uniPaletteRamIndex;
+        GLint uniOffsetX;
         GLint uniBkgPaletteRam[4], uniSprPaletteRam[4];
 
         constexpr static int nesWidth = 256, nesHeight = 240;

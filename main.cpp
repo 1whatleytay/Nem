@@ -2,10 +2,11 @@
 // Created by Taylor Whatley on 2018-10-06.
 //
 
-#include "App/App.h"
-
 #ifdef CPU_ONLY
 #include "CPU/CPU.h"
+#include "Emulator.h"
+#else
+#include "App/App.h"
 #endif
 
 #include <iostream>

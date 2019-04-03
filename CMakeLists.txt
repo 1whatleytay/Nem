@@ -8,16 +8,14 @@ set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 
-add_subdirectory(glfw)
+add_subdirectory(External/glfw)
 if (WIN32)
-    add_subdirectory(gl3w)
+    add_subdirectory(External/gl3w)
 else()
     find_package(OpenGL REQUIRED)
 endif()
 
-if (APPLE)
-    add_definitions(-DGL_SILENCE_DEPRECATION)
-endif()
+add_definitions(-DGL_SILENCE_DEPRECATION)
 
 set(Sources
 

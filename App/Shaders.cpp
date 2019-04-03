@@ -88,6 +88,9 @@ namespace Nem {
         glUniform1i(paletteSampler, 0);
         glUniform1i(patternSampler, 1);
 
+        uniOffsetX = glGetUniformLocation(program, "offsetX");
+        glUniform1i(uniOffsetX, 0);
+
         uniPaletteRamIndex = glGetUniformLocation(program, "paletteIndex");
         glUniform1i(uniPaletteRamIndex, 0);
 

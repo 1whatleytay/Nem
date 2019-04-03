@@ -7,7 +7,7 @@
 
 //#define CPU_ENTRY 0xc000
 //#define RTI_MINUS_ONE
-#define FORCE_SPRITE_ZERO_HIT
+//#define FORCE_SPRITE_ZERO_HIT
 
 #include "../Internal.h"
 

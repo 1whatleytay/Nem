@@ -8,6 +8,12 @@
 #include <iostream>
 
 namespace Nem {
+#ifdef __APPLE__
+    const float viewportScale = 2.0f;
+#else
+    const float viewportScale = 1.0f;
+#endif
+
     void onError(int code, const char* description) {
         std::cout << "GLFW Error " << makeHex(code) << ": " << description << std::endl;
     }
@@ -18,7 +24,7 @@ namespace Nem {
     }
 
     void onResize(GLFWwindow*, int width, int height) {
-        glViewport(0, 0, width * 2, height * 2);
+        glViewport(0, 0, (int)(width * viewportScale), (int)(height * viewportScale));
     }
 
     void bindCombo(GLuint buffer, GLuint vao) {
@@ -96,16 +102,26 @@ namespace Nem {
                 bindTexture(0, GL_TEXTURE_1D, palette);
                 bindTexture(1, GL_TEXTURE_2D, patternTable[1]);
 
-                bindCombo(nameTableBuffers[0], nameTableVAOs[0]);
+                int baseNameTable = ppu->registers.control & PPURegisters::NameTable;
+                bindCombo(nameTableBuffers[baseNameTable], nameTableVAOs[baseNameTable]);
 
                 glUniform1i(uniPaletteRamIndex, 0);
                 for (int a = 0; a < 240; a++) {
-                    if (a == 32) ppu->registers.status |= PPURegisters::StatusFlags::SprZeroHit;
-                    if (a % 8 == 0) glDrawArrays(GL_TRIANGLES, (a / 8) * 32 * 6, 32 * 6);
+                    if (a == 4) ppu->registers.status |= PPURegisters::StatusFlags::SprZeroHit;
+
+                    if (a % 8 == 0) {
+                        if ((ppu->registers.mask & PPURegisters::MaskFlags::ShowBKG)
+                            == PPURegisters::MaskFlags::ShowBKG) {
+                            glUniform1i(uniOffsetX, -ppu->registers.scrollX);
+                            glDrawArrays(GL_TRIANGLES, (a / 8) * 32 * 6, 32 * 6);
+                        }
+                    }
+
                     skipCycles(261 - (a == 0 && ppu->isMaskSet(
                             PPURegisters::MaskFlags::ShowBKG) && ppu->oddFrame));
                 }
 
+                glUniform1i(uniOffsetX, 0);
                 glUniform1i(uniPaletteRamIndex, 1);
                 bindTexture(1, GL_TEXTURE_2D, patternTable[0]);
                 bindCombo(oamBuffer, oamVAO);
